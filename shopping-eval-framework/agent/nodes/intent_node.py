@@ -42,7 +42,18 @@ age_range_min, battery_life_hours, screen_size_inches"""
 
 
 def intent_node(state: dict) -> dict:
+    history = state.get("conversation_history", [])
     query = state["query"]
+
+    if history:
+        history_str = "\n".join(f"{m['role']}: {m['content']}" for m in history)
+        query = (
+            f"Conversation so far:\n{history_str}\n\n"
+            f"New message: {query}\n\n"
+            f"Important: constraints accumulate across turns. Include all constraints "
+            f"from earlier turns plus any new ones from this message."
+        )
+
     messages = [
         SystemMessage(content=INTENT_SYSTEM_PROMPT),
         HumanMessage(content=query)
