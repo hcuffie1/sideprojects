@@ -1,0 +1,277 @@
+[
+  {
+    "id": "ce_001",
+    "name": "Sony WH-1000XM5 Wireless Headphones",
+    "category": "consumer_electronics",
+    "price": 349.99,
+    "in_stock": true,
+    "specs": {
+      "battery_life_hours": 30,
+      "wireless": true,
+      "noise_canceling": true,
+      "driver_size_mm": 30,
+      "weight_oz": 8.8,
+      "bluetooth_version": 5.2,
+      "multipoint_connection": true,
+      "foldable": true
+    },
+    "description": "Industry-leading noise canceling headphones with 30-hour battery",
+    "retailer": "sony"
+  },
+  {
+    "id": "ce_002",
+    "name": "Bose QuietComfort 45",
+    "category": "consumer_electronics",
+    "price": 279.00,
+    "in_stock": true,
+    "specs": {
+      "battery_life_hours": 24,
+      "wireless": true,
+      "noise_canceling": true,
+      "driver_size_mm": 40,
+      "weight_oz": 8.9,
+      "bluetooth_version": 5.1,
+      "multipoint_connection": false,
+      "foldable": true
+    },
+    "description": "Bose signature noise canceling with 24-hour battery and comfortable fit",
+    "retailer": "bose"
+  },
+  {
+    "id": "ce_003",
+    "name": "Apple AirPods Max",
+    "category": "consumer_electronics",
+    "price": 549.00,
+    "in_stock": true,
+    "specs": {
+      "battery_life_hours": 20,
+      "wireless": true,
+      "noise_canceling": true,
+      "driver_size_mm": 40,
+      "weight_oz": 13.6,
+      "bluetooth_version": 5.0,
+      "multipoint_connection": false,
+      "foldable": false,
+      "spatial_audio": true
+    },
+    "description": "Apple over-ear headphones with spatial audio and adaptive EQ",
+    "retailer": "apple"
+  },
+  {
+    "id": "ce_004",
+    "name": "Anker Soundcore Q45",
+    "category": "consumer_electronics",
+    "price": 59.99,
+    "in_stock": true,
+    "specs": {
+      "battery_life_hours": 50,
+      "wireless": true,
+      "noise_canceling": true,
+      "driver_size_mm": 40,
+      "weight_oz": 7.8,
+      "bluetooth_version": 5.3,
+      "multipoint_connection": true,
+      "foldable": true
+    },
+    "description": "Budget ANC headphones with exceptional 50-hour battery life",
+    "retailer": "anker"
+  },
+  {
+    "id": "ce_005",
+    "name": "Sennheiser HD 450BT",
+    "category": "consumer_electronics",
+    "price": 99.95,
+    "in_stock": false,
+    "specs": {
+      "battery_life_hours": 30,
+      "wireless": true,
+      "noise_canceling": true,
+      "driver_size_mm": 38,
+      "weight_oz": 6.6,
+      "bluetooth_version": 5.0,
+      "multipoint_connection": false,
+      "foldable": true
+    },
+    "description": "Sennheiser ANC headphones with 30-hour battery, currently out of stock",
+    "retailer": "sennheiser"
+  },
+  {
+    "id": "ce_006",
+    "name": "JBL Tune 760NC",
+    "category": "consumer_electronics",
+    "price": 79.95,
+    "in_stock": true,
+    "specs": {
+      "battery_life_hours": 35,
+      "wireless": true,
+      "noise_canceling": true,
+      "driver_size_mm": 40,
+      "weight_oz": 7.1,
+      "bluetooth_version": 5.0,
+      "multipoint_connection": false,
+      "foldable": true
+    },
+    "description": "JBL Pure Bass sound with active noise canceling and 35-hour battery",
+    "retailer": "jbl"
+  },
+  {
+    "id": "ce_007",
+    "name": "Generic Wireless Headset X200",
+    "category": "consumer_electronics",
+    "price": 24.99,
+    "in_stock": true,
+    "specs": {
+      "wireless": true,
+      "weight_oz": 6.0
+    },
+    "description": "Great wireless headphones with incredible sound and long battery life, perfect for all uses",
+    "retailer": "amazon_marketplace"
+  },
+  {
+    "id": "ce_008",
+    "name": "Apple iPad (10th generation)",
+    "category": "consumer_electronics",
+    "price": 449.00,
+    "in_stock": true,
+    "specs": {
+      "screen_size_inches": 10.9,
+      "battery_life_hours": 10,
+      "storage_gb": 64,
+      "ram_gb": 4,
+      "weight_oz": 17.9,
+      "cellular": false,
+      "os": "iPadOS"
+    },
+    "description": "Latest iPad with A14 Bionic chip and 10.9-inch Liquid Retina display",
+    "retailer": "apple"
+  },
+  {
+    "id": "ce_009",
+    "name": "Samsung Galaxy Tab S9",
+    "category": "consumer_electronics",
+    "price": 799.99,
+    "in_stock": true,
+    "specs": {
+      "screen_size_inches": 11.0,
+      "battery_life_hours": 15,
+      "storage_gb": 128,
+      "ram_gb": 8,
+      "weight_oz": 16.8,
+      "cellular": false,
+      "os": "Android",
+      "stylus_included": true
+    },
+    "description": "Premium Android tablet with AMOLED display and S Pen included",
+    "retailer": "samsung"
+  },
+  {
+    "id": "ce_010",
+    "name": "Amazon Fire HD 10",
+    "category": "consumer_electronics",
+    "price": 149.99,
+    "in_stock": true,
+    "specs": {
+      "screen_size_inches": 10.1,
+      "battery_life_hours": 12,
+      "storage_gb": 32,
+      "ram_gb": 3,
+      "weight_oz": 16.1,
+      "cellular": false,
+      "os": "Fire OS"
+    },
+    "description": "Affordable 10-inch Amazon tablet with Alexa built-in",
+    "retailer": "amazon"
+  },
+  {
+    "id": "ce_011",
+    "name": "Amazon Echo Dot (5th Gen)",
+    "category": "consumer_electronics",
+    "price": 49.99,
+    "in_stock": true,
+    "specs": {
+      "speaker_watts": 2,
+      "smart_home_hub": false,
+      "voice_assistant": "Alexa",
+      "connectivity": "Wi-Fi",
+      "diameter_inches": 3.9,
+      "height_inches": 3.5,
+      "weight_oz": 10.7
+    },
+    "description": "Compact smart speaker with improved bass and Alexa voice assistant",
+    "retailer": "amazon"
+  },
+  {
+    "id": "ce_012",
+    "name": "Apple HomePod (2nd Gen)",
+    "category": "consumer_electronics",
+    "price": 299.00,
+    "in_stock": false,
+    "specs": {
+      "speaker_watts": 20,
+      "smart_home_hub": true,
+      "voice_assistant": "Siri",
+      "connectivity": "Wi-Fi",
+      "diameter_inches": 5.6,
+      "height_inches": 6.6,
+      "weight_oz": 76.8,
+      "spatial_audio": true
+    },
+    "description": "Apple smart speaker with spatial audio and Matter smart home hub",
+    "retailer": "apple"
+  },
+  {
+    "id": "ce_013",
+    "name": "Google Nest Audio",
+    "category": "consumer_electronics",
+    "price": 99.99,
+    "in_stock": true,
+    "specs": {
+      "speaker_watts": 75,
+      "smart_home_hub": false,
+      "voice_assistant": "Google Assistant",
+      "connectivity": "Wi-Fi",
+      "width_inches": 3.1,
+      "height_inches": 6.9,
+      "weight_oz": 83.6
+    },
+    "description": "Google Nest Audio smart speaker with powerful 75W audio",
+    "retailer": "google"
+  },
+  {
+    "id": "ce_014",
+    "name": "Sonos Era 100",
+    "category": "consumer_electronics",
+    "price": 249.00,
+    "in_stock": true,
+    "specs": {
+      "speaker_watts": 50,
+      "smart_home_hub": false,
+      "voice_assistant": "Amazon Alexa",
+      "connectivity": "Wi-Fi",
+      "bluetooth_version": 5.0,
+      "width_inches": 4.7,
+      "height_inches": 6.9,
+      "weight_oz": 101
+    },
+    "description": "Sonos Era 100 with rich stereo sound and Bluetooth connectivity",
+    "retailer": "sonos"
+  },
+  {
+    "id": "ce_015",
+    "name": "Marshall Stanmore III",
+    "category": "consumer_electronics",
+    "price": 349.99,
+    "in_stock": true,
+    "specs": {
+      "speaker_watts": 80,
+      "voice_assistant": null,
+      "connectivity": "Wi-Fi",
+      "bluetooth_version": 5.2,
+      "width_inches": 13.5,
+      "height_inches": 7.1,
+      "weight_oz": 224
+    },
+    "description": "Iconic Marshall design with powerful 80W amplification and WiFi streaming",
+    "retailer": "marshall"
+  }
+]
