@@ -1,0 +1,261 @@
+[
+  {
+    "id": "of_001",
+    "name": "West Elm Patio Umbrella Base",
+    "category": "outdoor_furniture",
+    "price": 270.00,
+    "in_stock": true,
+    "specs": {
+      "weight_lbs": 50,
+      "diameter_inches": 22,
+      "max_umbrella_pole_diameter_inches": 1.5,
+      "max_umbrella_size_feet": 11,
+      "material": "cast iron",
+      "weather_resistant": true
+    },
+    "description": "Heavy cast iron base for outdoor umbrellas up to 11 feet",
+    "retailer": "west_elm"
+  },
+  {
+    "id": "of_002",
+    "name": "Pottery Barn Fillable Umbrella Base",
+    "category": "outdoor_furniture",
+    "price": 199.00,
+    "in_stock": true,
+    "specs": {
+      "weight_lbs": 20,
+      "diameter_inches": 18,
+      "max_umbrella_pole_diameter_inches": 1.75,
+      "max_umbrella_size_feet": 9,
+      "material": "resin",
+      "weather_resistant": true,
+      "fillable": true,
+      "fill_capacity_lbs": 50
+    },
+    "description": "Fillable resin base for umbrellas up to 9 feet, lightweight when empty",
+    "retailer": "pottery_barn"
+  },
+  {
+    "id": "of_003",
+    "name": "Restoration Hardware Grand Umbrella Base",
+    "category": "outdoor_furniture",
+    "price": 495.00,
+    "in_stock": true,
+    "specs": {
+      "weight_lbs": 75,
+      "diameter_inches": 20,
+      "max_umbrella_pole_diameter_inches": 2.0,
+      "max_umbrella_size_feet": 15,
+      "material": "cast iron",
+      "weather_resistant": true,
+      "color": "slate grey"
+    },
+    "description": "Premium cast iron base rated for large commercial umbrellas up to 15 feet",
+    "retailer": "restoration_hardware"
+  },
+  {
+    "id": "of_004",
+    "name": "IKEA Lindoja Umbrella Base",
+    "category": "outdoor_furniture",
+    "price": 49.99,
+    "in_stock": true,
+    "specs": {
+      "weight_lbs": 22,
+      "diameter_inches": 16,
+      "max_umbrella_pole_diameter_inches": 1.25,
+      "max_umbrella_size_feet": 8,
+      "material": "concrete",
+      "weather_resistant": true
+    },
+    "description": "Affordable concrete umbrella base for smaller patio umbrellas",
+    "retailer": "ikea"
+  },
+  {
+    "id": "of_005",
+    "name": "Frontgate Heavy Duty Commercial Base",
+    "category": "outdoor_furniture",
+    "price": 389.00,
+    "in_stock": true,
+    "specs": {
+      "weight_lbs": 90,
+      "diameter_inches": 23,
+      "max_umbrella_pole_diameter_inches": 2.0,
+      "max_umbrella_size_feet": 15,
+      "material": "steel",
+      "weather_resistant": true,
+      "powder_coated": true
+    },
+    "description": "Commercial-grade steel base for large outdoor umbrellas",
+    "retailer": "frontgate"
+  },
+  {
+    "id": "of_006",
+    "name": "Target Threshold Patio Umbrella Base",
+    "category": "outdoor_furniture",
+    "price": 39.99,
+    "in_stock": false,
+    "specs": {
+      "weight_lbs": 15,
+      "diameter_inches": 14,
+      "max_umbrella_pole_diameter_inches": 1.5,
+      "max_umbrella_size_feet": 7,
+      "material": "plastic",
+      "weather_resistant": false
+    },
+    "description": "Budget plastic umbrella base, not recommended for wind-prone areas",
+    "retailer": "target"
+  },
+  {
+    "id": "of_007",
+    "name": "Crate and Barrel Wide Stance Base",
+    "category": "outdoor_furniture",
+    "price": 229.00,
+    "in_stock": true,
+    "specs": {
+      "weight_lbs": 55,
+      "diameter_inches": 25,
+      "max_umbrella_pole_diameter_inches": 1.75,
+      "max_umbrella_size_feet": 13,
+      "material": "cast iron",
+      "weather_resistant": true
+    },
+    "description": "Wide cast iron base providing exceptional stability for large umbrellas",
+    "retailer": "crate_and_barrel"
+  },
+  {
+    "id": "of_008",
+    "name": "Mystery Heavy Base",
+    "category": "outdoor_furniture",
+    "price": 175.00,
+    "in_stock": true,
+    "specs": {
+      "weight_lbs": 50,
+      "material": "cast iron",
+      "weather_resistant": true
+    },
+    "description": "Heavy cast iron all-weather base perfect for any large outdoor umbrella",
+    "retailer": "generic_outdoor"
+  },
+  {
+    "id": "of_009",
+    "name": "Wayfair Andover Mills Umbrella Base",
+    "category": "outdoor_furniture",
+    "price": 119.99,
+    "in_stock": true,
+    "specs": {
+      "weight_lbs": 35,
+      "diameter_inches": 19,
+      "max_umbrella_pole_diameter_inches": 1.5,
+      "max_umbrella_size_feet": 11,
+      "material": "steel",
+      "weather_resistant": true,
+      "color": "bronze"
+    },
+    "description": "Mid-range steel umbrella base for standard patio umbrellas up to 11 feet",
+    "retailer": "wayfair"
+  },
+  {
+    "id": "of_010",
+    "name": "No-Name Budget Base",
+    "category": "outdoor_furniture",
+    "price": 29.99,
+    "in_stock": true,
+    "specs": {
+      "weight_lbs": 10
+    },
+    "description": "Basic umbrella base",
+    "retailer": "amazon_marketplace"
+  },
+  {
+    "id": "of_011",
+    "name": "Grandin Road Cross Base with Wheels",
+    "category": "outdoor_furniture",
+    "price": 259.00,
+    "in_stock": true,
+    "specs": {
+      "weight_lbs": 60,
+      "diameter_inches": 21,
+      "max_umbrella_pole_diameter_inches": 2.0,
+      "max_umbrella_size_feet": 13,
+      "material": "cast iron",
+      "weather_resistant": true,
+      "has_wheels": true
+    },
+    "description": "Wheeled cast iron cross base for easy repositioning of large patio umbrellas",
+    "retailer": "grandin_road"
+  },
+  {
+    "id": "of_012",
+    "name": "Williams Sonoma Outdoor Dining Chair",
+    "category": "outdoor_furniture",
+    "price": 349.00,
+    "in_stock": true,
+    "specs": {
+      "weight_lbs": 18,
+      "material": "teak",
+      "weather_resistant": true,
+      "seat_width_inches": 20,
+      "seat_depth_inches": 18,
+      "max_weight_capacity_lbs": 300,
+      "color": "natural"
+    },
+    "description": "Premium teak outdoor dining chair with UV-resistant finish",
+    "retailer": "williams_sonoma"
+  },
+  {
+    "id": "of_013",
+    "name": "Pottery Barn Chatham Lounge Chair",
+    "category": "outdoor_furniture",
+    "price": 599.00,
+    "in_stock": true,
+    "specs": {
+      "weight_lbs": 25,
+      "material": "aluminum",
+      "weather_resistant": true,
+      "seat_width_inches": 26,
+      "seat_depth_inches": 22,
+      "max_weight_capacity_lbs": 250,
+      "has_cushion": true,
+      "color": "white"
+    },
+    "description": "Powder-coated aluminum lounge chair with all-weather cushion",
+    "retailer": "pottery_barn"
+  },
+  {
+    "id": "of_014",
+    "name": "CB2 Rocha Outdoor Dining Table",
+    "category": "outdoor_furniture",
+    "price": 899.00,
+    "in_stock": false,
+    "specs": {
+      "weight_lbs": 65,
+      "material": "concrete",
+      "weather_resistant": true,
+      "length_inches": 72,
+      "width_inches": 36,
+      "height_inches": 30,
+      "seats": 6,
+      "umbrella_hole": true,
+      "umbrella_hole_diameter_inches": 2.0
+    },
+    "description": "Modern concrete outdoor dining table with umbrella hole, seats 6",
+    "retailer": "cb2"
+  },
+  {
+    "id": "of_015",
+    "name": "Article Ora Outdoor Side Table",
+    "category": "outdoor_furniture",
+    "price": 149.00,
+    "in_stock": true,
+    "specs": {
+      "weight_lbs": 12,
+      "material": "powder-coated steel",
+      "weather_resistant": true,
+      "diameter_inches": 18,
+      "height_inches": 20,
+      "color": "black"
+    },
+    "description": "Compact powder-coated steel side table for outdoor use",
+    "retailer": "article"
+  }
+]

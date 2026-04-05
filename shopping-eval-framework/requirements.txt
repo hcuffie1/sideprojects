@@ -1,0 +1,10 @@
+langgraph
+langchain
+langchain-google-genai
+deepeval
+langsmith
+pytest
+pytest-asyncio
+python-dotenv
+sentence-transformers
+numpy
