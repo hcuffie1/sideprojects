@@ -57,7 +57,7 @@ CANONICAL_QUERIES = [
     },
     {
         "id": "q_006",
-        "query": "patio umbrella base that's less than 20 bucks",  # only dollar constraint
+        "query": "patio umbrella base that's less than 20 bucks",
         "expected_category": "outdoor_furniture",
         "hard_constraints": [
             {"field": "price", "op": "lte", "value": 20}
@@ -65,5 +65,40 @@ CANONICAL_QUERIES = [
         "expected_top_result_in_stock": False,
         "expected_no_hallucination": True,
         "description": "Impossible constraints given catalog"
+    },
+    {
+        "id": "q_007",
+        "type": "multi_turn",
+        "turns": [
+            {
+                "query": "I'm looking for an umbrella base",
+                "expected_category": "outdoor_furniture"
+            },
+            {
+                "query": "it needs to hold a 15 foot umbrella"
+            },
+            {
+                "query": "and it has to be under 24 inches wide",
+                "expected_no_products_found": False
+            }
+        ],
+        "description": "Multi-turn refinement — category T1, constraints T2+T3"
+    },
+    {
+        "id": "q_008",
+        "type": "multi_turn",
+        "turns": [
+            {
+                "query": "show me wireless headphones",
+                "expected_category": "consumer_electronics"
+            },
+            {
+                "query": "actually I need at least 30 hours battery life",
+                "hard_constraints": [
+                    {"field": "battery_life_hours", "op": "gte", "value": 30}
+                ]
+            }
+        ],
+        "description": "Multi-turn headphones — constraint refinement across turns"
     }
 ]
