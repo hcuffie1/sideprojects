@@ -50,7 +50,8 @@ CREATE TABLE IF NOT EXISTS traces (
     candidates_eliminated       INTEGER,
     output_violations           INTEGER,
     constraint_violations_json  TEXT,
-    metrics_json                TEXT
+    metrics_json                TEXT,
+    langfuse_trace_id           TEXT
 )
 """
 
@@ -60,6 +61,7 @@ _MIGRATION_COLUMNS = [
     ("constraint_violations_json", "TEXT"),
     ("candidates_eliminated", "INTEGER"),
     ("output_violations", "INTEGER"),
+    ("langfuse_trace_id", "TEXT"),
 ]
 
 _OPS = {
@@ -178,6 +180,7 @@ def save_result(result: dict, run_id: str, db_path: str = DB_PATH) -> None:
         "candidates_eliminated": len(violations),
         "output_violations": _output_violations(result),
         "constraint_violations_json": json.dumps(violations),
+        "langfuse_trace_id": result.get("_langfuse_trace_id"),
         "metrics_json": json.dumps({
             "parsed_constraints": result.get("parsed_constraints", []),
             "groundedness_annotations": result.get(
@@ -195,13 +198,13 @@ def save_result(result: dict, run_id: str, db_path: str = DB_PATH) -> None:
                 category_detected, failure_mode, num_ranked,
                 top1_in_stock, top1_valid, avg_groundedness,
                 candidates_eliminated, output_violations,
-                constraint_violations_json, metrics_json
+                constraint_violations_json, langfuse_trace_id, metrics_json
             ) VALUES (
                 :run_id, :query_id, :query_text, :query_type, :timestamp,
                 :category_detected, :failure_mode, :num_ranked,
                 :top1_in_stock, :top1_valid, :avg_groundedness,
                 :candidates_eliminated, :output_violations,
-                :constraint_violations_json, :metrics_json
+                :constraint_violations_json, :langfuse_trace_id, :metrics_json
             )
             """,
             row,

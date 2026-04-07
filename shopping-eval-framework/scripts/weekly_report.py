@@ -15,12 +15,17 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from dotenv import load_dotenv
 load_dotenv()
 
+from langfuse import observe, get_client  # noqa: E402
+
 from agent.graph import agent  # noqa: E402
 from evals.canonical_queries import CANONICAL_QUERIES  # noqa: E402
 from evals.metrics.compute_metrics import compute_metrics  # noqa: E402
 from evals.metrics.failure_analysis import failure_distribution  # noqa: E402
 from evals.insights.analyze_results import analyze  # noqa: E402
 from evals.persistence import init_db, save_result  # noqa: E402
+from evals.observability.drift_detector import (  # noqa: E402
+    get_baseline_scores, detect_drift
+)
 
 EMPTY_STATE = {
     "conversation_history": [],
@@ -39,18 +44,39 @@ EMPTY_STATE = {
 }
 
 
-def _run_query(q: dict) -> dict:
+@observe()
+def _run_query(q: dict, run_id: str = "") -> dict:
+    query_type = q.get("query_type", "unknown")
+    turns = q.get("turns", [])
+    query_text = q.get("query", turns[0]["query"] if turns else "")
+    get_client().update_current_span(
+        name=f"eval-{q['id']}",
+        input={"query": query_text},
+        metadata={
+            "query_id": q["id"],
+            "query_type": query_type,
+            "tags": ["eval", "weekly_report", query_type],
+            "description": q.get("description", ""),
+            "run_id": run_id,
+        },
+    )
+
     if q.get("type") == "multi_turn":
         state = {**EMPTY_STATE}
         for turn in q["turns"]:
             state["query"] = turn["query"]
             state = agent.invoke(state)
         state["query_spec"] = q
-        return state
+        result = state
     else:
         result = agent.invoke({**EMPTY_STATE, "query": q["query"]})
         result["query_spec"] = q
-        return result
+
+    get_client().update_current_span(
+        output={"response": result.get("final_response", "")[:200]},
+    )
+    result["_langfuse_trace_id"] = get_client().get_current_trace_id()
+    return result
 
 
 def _fmt(value) -> str:
@@ -81,7 +107,7 @@ def main():
         try:
             sys.stdout.write(f"  Running [{q['id']}]... ")
             sys.stdout.flush()
-            result = _run_query(q)
+            result = _run_query(q, run_id)
             save_result(result, run_id)
             results.append(result)
             ranked = len(result.get("ranked_products", []))
@@ -129,7 +155,41 @@ def main():
     for rec in insights.get("recommendations", []):
         print(f"  → {rec}")
 
+    # Drift detection — compare current run to 7-day baseline in Langfuse
+    _DRIFT_METRICS = [
+        "groundedness", "constraint_satisfaction", "top1_valid",
+        "output_violations",
+    ]
+    baseline = get_baseline_scores(_DRIFT_METRICS, days_back=7)
+    current_scores = {
+        "groundedness": metrics.get("avg_groundedness"),
+        "constraint_satisfaction": metrics.get("constraint_satisfaction_rate"),
+        "top1_valid": metrics.get("top1_valid_rate"),
+        "output_violations": (
+            sum(
+                1 for r in results
+                if r.get("output_violations", 0) > 0
+            ) / len(results)
+            if results else 0.0
+        ),
+    }
+    drift_alerts = detect_drift(current_scores, baseline)
+
+    print(f"\n{'─'*50}")
+    print("DRIFT ALERTS")
+    print(f"{'─'*50}")
+    if not drift_alerts:
+        print("  No drift detected (or no baseline available).")
+    for alert in drift_alerts:
+        icon = "[HIGH]" if alert["is_regression"] else "[INFO]"
+        print(
+            f"  {icon} {alert['metric']}: "
+            f"{alert['baseline']:.3f} → {alert['current']:.3f} "
+            f"({alert['relative_change']:+.1%})"
+        )
+
     print(f"\n{'='*50}\n")
+    get_client().flush()
 
 
 if __name__ == "__main__":

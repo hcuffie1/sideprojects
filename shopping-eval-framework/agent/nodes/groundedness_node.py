@@ -4,6 +4,7 @@ import json
 import os
 import re
 from dotenv import load_dotenv
+from agent.tracing import traced_node
 
 load_dotenv()
 
@@ -67,6 +68,7 @@ that aren't supported by the spec data?"""
     return result
 
 
+@traced_node("GroundednessNode")
 def groundedness_node(state: dict) -> dict:
     products = state.get("ranked_products", [])
     constraints = state.get("parsed_constraints", [])

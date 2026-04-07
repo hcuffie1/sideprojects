@@ -1,3 +1,6 @@
+from agent.tracing import traced_node
+
+
 def score_product(product: dict, state: dict) -> float:
     """Simple scoring — extend with embeddings in later phases"""
     score = 0.0
@@ -18,6 +21,7 @@ def score_product(product: dict, state: dict) -> float:
     return score
 
 
+@traced_node("RankingNode")
 def ranking_node(state: dict) -> dict:
     products = state.get("filtered_products", [])
     scored = [(p, score_product(p, state)) for p in products]
