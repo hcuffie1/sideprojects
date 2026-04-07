@@ -1,0 +1,44 @@
+name: Eval Suite
+
+on:
+  pull_request:
+  schedule:
+    - cron: '0 8 * * 1'  # Weekly, Monday 8am UTC
+
+jobs:
+  phase1-fast:
+    name: Phase 1 — Logic Tests (no API key)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        working-directory: shopping-eval-framework
+        run: pip install -r requirements.txt
+      - name: Run logic-only tests
+        working-directory: shopping-eval-framework
+        run: |
+          pytest evals/phase1/test_constraint_checking.py \
+                 evals/phase1/test_retrieval.py \
+                 evals/phase1/test_ranking.py \
+                 -v --tb=short
+
+  phase2-nightly:
+    name: Phase 2 — Full Integration Suite
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule'
+    env:
+      GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        working-directory: shopping-eval-framework
+        run: pip install -r requirements.txt
+      - name: Run full eval suite
+        working-directory: shopping-eval-framework
+        run: pytest evals/ -v --tb=short

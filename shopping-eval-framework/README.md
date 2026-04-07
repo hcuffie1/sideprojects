@@ -48,6 +48,8 @@ Fast pytest suite covering each node in isolation:
 | `test_intent_extraction.py` | Constraint extraction from natural language |
 | `test_response_generation.py` | Response only includes grounded products |
 
+`test_groundedness.py` includes a secondary `test_deepeval_hallucination_metric` that uses DeepEval's `HallucinationMetric` (LLM-jury method) as an independent cross-check. Our GroundednessNode checks spec-by-spec for missing fields; DeepEval prompts an LLM to judge whether a response is supported by the provided context. Agreement validates the approach; divergence is a signal worth investigating.
+
 ### Phase 2 — Integration tests
 End-to-end tests against the full LangGraph pipeline:
 
@@ -163,6 +165,22 @@ The mock catalog deliberately includes:
 | `avg_groundedness` | Average LLM groundedness score across ranked products | ≥ 0.70 |
 | `no_valid_results_rate` | % queries returning zero valid results | ≤ 0.10 |
 | `oos_rate_top1` | % queries where top result is out of stock | ≤ 0.05 |
+
+---
+
+## Eval coverage gaps
+
+This suite is intentionally scoped to offline accuracy. Known gaps:
+
+| Gap | What it would require |
+|---|---|
+| Response quality beyond groundedness (helpfulness, tone, verbosity) | LLM-as-judge rubric on `final_response` |
+| Spec citation accuracy (right product, wrong spec value cited) | Per-claim fact extraction + verification |
+| Multi-turn constraint forgetting | Cross-turn constraint accumulation assertions |
+| Query cost and latency | Token counting + wall-clock timing per node |
+| Run-over-run variance (LLM non-determinism) | N=3+ repeated runs, per-metric std dev |
+| Live user signal (clicks, purchases, returns) | Online eval infrastructure, attribution window |
+| Semantic similarity to ideal response | Reference answers + embedding similarity |
 
 ---
 

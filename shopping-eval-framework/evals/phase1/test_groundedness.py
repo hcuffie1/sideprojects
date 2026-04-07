@@ -1,4 +1,18 @@
-import pytest
+"""
+Phase 1 groundedness tests.
+
+test_no_confident_fabrication and test_grounded_product_passes exercise our
+custom GroundednessNode directly — they check spec-by-spec whether each claim
+in a product description is actually backed by catalog data.
+
+test_deepeval_hallucination_metric is an *independent cross-check* using
+DeepEval's HallucinationMetric (LLM-jury method). The two approaches use
+different mechanisms: our GroundednessNode checks for the presence of
+specific spec fields, while DeepEval prompts an LLM to judge whether the
+response is supported by the provided context. Agreement between the two
+validates our approach; divergence (one passes, the other fails) is a signal
+worth investigating.
+"""
 import json
 from dotenv import load_dotenv
 

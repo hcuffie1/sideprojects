@@ -27,6 +27,7 @@ import os
 import sqlite3
 from datetime import datetime, timezone
 
+from agent.nodes.constraint_check_node import check_constraint
 from evals.metrics.failure_analysis import classify_failure
 
 # Resolve path relative to project root (two levels up from this file)
@@ -64,14 +65,6 @@ _MIGRATION_COLUMNS = [
     ("langfuse_trace_id", "TEXT"),
 ]
 
-_OPS = {
-    "lte": lambda a, b: a <= b,
-    "gte": lambda a, b: a >= b,
-    "eq": lambda a, b: a == b,
-    "contains": lambda a, b: b in str(a),
-}
-
-
 def init_db(db_path: str = DB_PATH) -> None:
     """Create the .eval_results directory and traces table; migrate if needed."""
     os.makedirs(os.path.dirname(db_path), exist_ok=True)
@@ -97,18 +90,9 @@ def _top1_valid(result: dict) -> int | None:
     if not top.get("in_stock"):
         return 0
     query_spec = result.get("query_spec", {})
-    for c in query_spec.get("hard_constraints", []):
-        if not c.get("is_hard", True):
-            continue
-        field = c["field"]
-        op = c["op"]
-        value = c["value"]
-        specs = top.get("specs", {})
-        actual = specs.get(field, top.get(field))
-        if actual is None:
-            return 0
-        if op in _OPS and not _OPS[op](actual, value):
-            return 0
+    hard = [c for c in query_spec.get("hard_constraints", []) if c.get("is_hard", True)]
+    if any(not check_constraint(top, c)[0] for c in hard):
+        return 0
     return 1
 
 
@@ -125,19 +109,10 @@ def _output_violations(result: dict) -> int:
     ]
     if not hard_constraints:
         return 0
-
-    count = 0
-    for product in ranked:
-        for c in hard_constraints:
-            field = c["field"]
-            op = c["op"]
-            value = c["value"]
-            specs = product.get("specs", {})
-            actual = specs.get(field, product.get(field))
-            if actual is None or (op in _OPS and not _OPS[op](actual, value)):
-                count += 1
-                break  # one violation per product is enough
-    return count
+    return sum(
+        1 for product in ranked
+        if any(not check_constraint(product, c)[0] for c in hard_constraints)
+    )
 
 
 def _avg_groundedness(result: dict) -> float | None:

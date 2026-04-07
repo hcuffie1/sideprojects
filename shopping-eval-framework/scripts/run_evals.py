@@ -22,6 +22,7 @@ load_dotenv()
 from langfuse import observe, get_client  # noqa: E402
 
 from agent.graph import agent  # noqa: E402
+from agent.nodes.constraint_check_node import check_constraint  # noqa: E402
 from evals.canonical_queries import CANONICAL_QUERIES  # noqa: E402
 from evals.metrics.compute_metrics import compute_metrics  # noqa: E402
 from evals.metrics.failure_analysis import (  # noqa: E402
@@ -45,33 +46,17 @@ EMPTY_STATE = {
     "eval_scores": None,
 }
 
-_OPS = {
-    "lte": lambda a, b: a <= b,
-    "gte": lambda a, b: a >= b,
-    "eq": lambda a, b: a == b,
-}
-
-
 def _compute_output_violations(result: dict) -> int:
     """Count ranked products that violate at least one hard constraint."""
     ranked = result.get("ranked_products", [])
     query_spec = result.get("query_spec", {})
-    hard = [
-        c for c in query_spec.get("hard_constraints", [])
-        if c.get("is_hard", True)
-    ]
+    hard = [c for c in query_spec.get("hard_constraints", []) if c.get("is_hard", True)]
     if not hard:
         return 0
-    count = 0
-    for p in ranked:
-        for c in hard:
-            actual = p.get("specs", {}).get(c["field"], p.get(c["field"]))
-            if actual is None or (
-                c["op"] in _OPS and not _OPS[c["op"]](actual, c["value"])
-            ):
-                count += 1
-                break
-    return count
+    return sum(
+        1 for p in ranked
+        if any(not check_constraint(p, c)[0] for c in hard)
+    )
 
 
 def _avg_groundedness(result: dict) -> float:
@@ -88,14 +73,9 @@ def _top1_valid(result: dict) -> float:
     if not top.get("in_stock"):
         return 0.0
     query_spec = result.get("query_spec", {})
-    for c in query_spec.get("hard_constraints", []):
-        if not c.get("is_hard", True):
-            continue
-        actual = top.get("specs", {}).get(c["field"], top.get(c["field"]))
-        if actual is None:
-            return 0.0
-        if c["op"] in _OPS and not _OPS[c["op"]](actual, c["value"]):
-            return 0.0
+    hard = [c for c in query_spec.get("hard_constraints", []) if c.get("is_hard", True)]
+    if any(not check_constraint(top, c)[0] for c in hard):
+        return 0.0
     return 1.0
 
 
