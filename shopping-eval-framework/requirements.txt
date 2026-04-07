@@ -1,3 +1,4 @@
+langfuse>=4.0.0
 langgraph
 langchain
 langchain-google-genai

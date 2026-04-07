@@ -3,6 +3,7 @@ from langchain_core.messages import SystemMessage, HumanMessage
 import json
 import os
 from dotenv import load_dotenv
+from agent.tracing import traced_node
 
 load_dotenv()
 
@@ -24,6 +25,7 @@ RULES:
 """
 
 
+@traced_node("ResponseNode")
 def response_node(state: dict) -> dict:
     ranked = state.get("ranked_products", [])
     annotations = state.get("groundedness_annotations", [])

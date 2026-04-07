@@ -1,3 +1,5 @@
+from agent.tracing import traced_node
+
 OPS = {
     "lte": lambda actual, val: actual <= val,
     "gte": lambda actual, val: actual >= val,
@@ -44,6 +46,7 @@ def check_constraint(product: dict, constraint: dict) -> tuple:
     return True, None
 
 
+@traced_node("ConstraintCheckNode")
 def constraint_check_node(state: dict) -> dict:
     products = state.get("candidate_products", [])
     constraints = [c for c in state.get("parsed_constraints", []) if c.get("is_hard")]

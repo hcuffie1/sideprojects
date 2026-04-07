@@ -96,3 +96,17 @@ def test_deepeval_hallucination_metric():
         "DeepEval should flag this as hallucination — "
         "the spec doesn't support the 15ft claim"
     )
+
+    # Push score to Langfuse via context (no-op if LANGFUSE_PUBLIC_KEY not set)
+    try:
+        from langfuse import get_client
+        get_client().score_current_trace(
+            name="deepeval_hallucination",
+            value=metric.score,
+            comment=(
+                f"DeepEval HallucinationMetric threshold=0.5 — "
+                f"{'pass' if metric.is_successful() else 'fail'}"
+            ),
+        )
+    except Exception:
+        pass  # Langfuse unavailable — test result still valid

@@ -4,6 +4,7 @@ import json
 import os
 import re
 from dotenv import load_dotenv
+from agent.tracing import traced_node
 
 load_dotenv()
 
@@ -41,6 +42,7 @@ Examples of field names: price, diameter_inches, weight_lbs, max_umbrella_size_f
 age_range_min, battery_life_hours, screen_size_inches"""
 
 
+@traced_node("IntentNode")
 def intent_node(state: dict) -> dict:
     history = state.get("conversation_history", [])
     query = state["query"]

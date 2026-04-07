@@ -1,5 +1,6 @@
 import json
 import os
+from agent.tracing import traced_node
 
 CATALOG_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "catalog")
 
@@ -12,6 +13,7 @@ def load_catalog(category: str) -> list:
         return json.load(f)
 
 
+@traced_node("RetrievalNode")
 def retrieval_node(state: dict) -> dict:
     category = state.get("category", "unknown")
     products = load_catalog(category)

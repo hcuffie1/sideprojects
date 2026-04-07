@@ -7,6 +7,7 @@ Usage:
     python scripts/run_evals.py --mode sample    # first 3 single-turn
     python scripts/run_evals.py --mode full      # all queries
     python scripts/run_evals.py q_001 q_003      # specific query IDs
+    python scripts/run_evals.py --version v1_prime  # tag for A/A' comparison
 """
 import sys
 import os
@@ -18,10 +19,14 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from dotenv import load_dotenv
 load_dotenv()
 
+from langfuse import observe, get_client  # noqa: E402
+
 from agent.graph import agent  # noqa: E402
 from evals.canonical_queries import CANONICAL_QUERIES  # noqa: E402
 from evals.metrics.compute_metrics import compute_metrics  # noqa: E402
-from evals.metrics.failure_analysis import failure_distribution  # noqa: E402
+from evals.metrics.failure_analysis import (  # noqa: E402
+    failure_distribution, classify_failure
+)
 from evals.persistence import init_db, save_result  # noqa: E402
 
 EMPTY_STATE = {
@@ -40,8 +45,109 @@ EMPTY_STATE = {
     "eval_scores": None,
 }
 
+_OPS = {
+    "lte": lambda a, b: a <= b,
+    "gte": lambda a, b: a >= b,
+    "eq": lambda a, b: a == b,
+}
 
-def run_single_query(query_spec: dict) -> dict:
+
+def _compute_output_violations(result: dict) -> int:
+    """Count ranked products that violate at least one hard constraint."""
+    ranked = result.get("ranked_products", [])
+    query_spec = result.get("query_spec", {})
+    hard = [
+        c for c in query_spec.get("hard_constraints", [])
+        if c.get("is_hard", True)
+    ]
+    if not hard:
+        return 0
+    count = 0
+    for p in ranked:
+        for c in hard:
+            actual = p.get("specs", {}).get(c["field"], p.get(c["field"]))
+            if actual is None or (
+                c["op"] in _OPS and not _OPS[c["op"]](actual, c["value"])
+            ):
+                count += 1
+                break
+    return count
+
+
+def _avg_groundedness(result: dict) -> float:
+    annotations = result.get("groundedness_annotations", [])
+    scores = [a["score"] for a in annotations if "score" in a]
+    return sum(scores) / len(scores) if scores else 0.0
+
+
+def _top1_valid(result: dict) -> float:
+    ranked = result.get("ranked_products", [])
+    if not ranked:
+        return 0.0
+    top = ranked[0]
+    if not top.get("in_stock"):
+        return 0.0
+    query_spec = result.get("query_spec", {})
+    for c in query_spec.get("hard_constraints", []):
+        if not c.get("is_hard", True):
+            continue
+        actual = top.get("specs", {}).get(c["field"], top.get(c["field"]))
+        if actual is None:
+            return 0.0
+        if c["op"] in _OPS and not _OPS[c["op"]](actual, c["value"]):
+            return 0.0
+    return 1.0
+
+
+def _log_scores(result: dict) -> None:
+    """Log eval scores to the current Langfuse trace via context."""
+    ranked = result.get("ranked_products", [])
+    avg_g = _avg_groundedness(result)
+    out_v = _compute_output_violations(result)
+    constraint_sat = 1.0 - (out_v / len(ranked)) if ranked else 1.0
+    top1 = _top1_valid(result)
+
+    for name, value, comment in [
+        ("groundedness", avg_g,
+         "Average groundedness score across ranked products"),
+        ("constraint_satisfaction", constraint_sat,
+         "% ranked products satisfying all hard constraints"),
+        ("top1_valid", top1,
+         "Binary: top result valid (in stock, no violations)"),
+        ("output_violations", float(out_v),
+         "Guardrail failures in final ranked output (target: 0)"),
+    ]:
+        get_client().score_current_trace(
+            name=name, value=value, comment=comment
+        )
+
+    if out_v > 0 or avg_g < 0.6:
+        reason = "output_violations" if out_v > 0 else "low_groundedness"
+        get_client().score_current_trace(
+            name="needs_human_review",
+            value=1.0,
+            comment=f"Flagged: {reason}",
+        )
+
+
+@observe()
+def run_single_query(
+    query_spec: dict, run_id: str = "", version: str = "v1"
+) -> dict:
+    query_type = query_spec.get("query_type", "unknown")
+    get_client().update_current_span(
+        name=f"eval-{query_spec['id']}",
+        input={"query": query_spec["query"]},
+        metadata={
+            "query_id": query_spec["id"],
+            "query_type": query_type,
+            "tags": ["eval", query_type, version],
+            "description": query_spec.get("description", ""),
+            "agent_version": version,
+            "run_id": run_id,
+        },
+    )
+
     print(f"\n{'='*60}")
     print(f"[{query_spec['id']}] {query_spec['description']}")
     print(f"Query: {query_spec['query']}")
@@ -67,10 +173,38 @@ def run_single_query(query_spec: dict) -> dict:
     print(f"\nResponse:\n{result.get('final_response')}")
 
     result["query_spec"] = query_spec
+    _log_scores(result)
+    get_client().update_current_span(
+        output={"response": result.get("final_response", "")[:200]},
+        metadata={
+            "failure_mode": classify_failure(result),
+            "products_ranked": len(result.get("ranked_products", [])),
+            "output_violations": _compute_output_violations(result),
+        },
+    )
+    result["_langfuse_trace_id"] = get_client().get_current_trace_id()
     return result
 
 
-def run_multiturn_query(query_spec: dict) -> dict:
+@observe()
+def run_multiturn_query(
+    query_spec: dict, run_id: str = "", version: str = "v1"
+) -> dict:
+    query_type = query_spec.get("query_type", "unknown")
+    turns = query_spec.get("turns", [])
+    get_client().update_current_span(
+        name=f"eval-{query_spec['id']}",
+        input={"query": turns[0]["query"] if turns else ""},
+        metadata={
+            "query_id": query_spec["id"],
+            "query_type": query_type,
+            "tags": ["eval", query_type, version],
+            "description": query_spec.get("description", ""),
+            "agent_version": version,
+            "run_id": run_id,
+        },
+    )
+
     print(f"\n{'='*60}")
     print(
         f"[{query_spec['id']}] {query_spec['description']} (multi-turn)"
@@ -78,7 +212,7 @@ def run_multiturn_query(query_spec: dict) -> dict:
     print("-" * 60)
 
     state = {**EMPTY_STATE}
-    for i, turn in enumerate(query_spec["turns"], 1):
+    for i, turn in enumerate(turns, 1):
         print(f"\n  Turn {i}: {turn['query']}")
         state["query"] = turn["query"]
         state = agent.invoke(state)
@@ -90,6 +224,16 @@ def run_multiturn_query(query_spec: dict) -> dict:
 
     print(f"\nFinal response:\n{state.get('final_response')}")
     state["query_spec"] = query_spec
+    _log_scores(state)
+    get_client().update_current_span(
+        output={"response": state.get("final_response", "")[:200]},
+        metadata={
+            "failure_mode": classify_failure(state),
+            "products_ranked": len(state.get("ranked_products", [])),
+            "output_violations": _compute_output_violations(state),
+        },
+    )
+    state["_langfuse_trace_id"] = get_client().get_current_trace_id()
     return state
 
 
@@ -130,6 +274,11 @@ if __name__ == "__main__":
         help="dev=q_001 only, sample=first 3, full=all"
     )
     parser.add_argument(
+        "--version",
+        default="v1",
+        help="Agent version tag for A/A' comparison in Langfuse"
+    )
+    parser.add_argument(
         "query_ids",
         nargs="*",
         help="Optional specific query IDs to run"
@@ -145,9 +294,9 @@ if __name__ == "__main__":
     for q in queries:
         try:
             if q.get("type") == "multi_turn":
-                result = run_multiturn_query(q)
+                result = run_multiturn_query(q, run_id, args.version)
             else:
-                result = run_single_query(q)
+                result = run_single_query(q, run_id, args.version)
             save_result(result, run_id)
             results.append(result)
         except Exception as e:
@@ -157,4 +306,12 @@ if __name__ == "__main__":
         metrics = compute_metrics(results)
         failures = failure_distribution(results)
         print_metrics_summary(metrics, failures)
-        print(f"  Results saved to .eval_results/traces.db  (run_id: {run_id})")
+        print(
+            f"  Results saved to .eval_results/traces.db  (run_id: {run_id})"
+        )
+        if os.getenv("LANGFUSE_PUBLIC_KEY"):
+            print(
+                f"  Langfuse traces tagged: version={args.version}, "
+                f"run_id={run_id}"
+            )
+        get_client().flush()
