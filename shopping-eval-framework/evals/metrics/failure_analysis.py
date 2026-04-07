@@ -8,9 +8,16 @@ priority order:
   constraint_violation     top result violates a hard constraint
   hallucination            any groundedness score < 0.5
   missing_spec_failure     hard constraint violation reason is spec_missing
-  no_results               ranked_products==[] when results were expected
+  impossible_constraints   ranked_products==[] AND satisfiable=False on query
+  catalog_gap              ranked_products==[] AND satisfiable=True on query
+                           (valid constraints, nothing in current catalog)
+  no_results               ranked_products==[] unexpectedly (no expected flag)
   ranking_failure          valid products exist but top result is suboptimal
   success                  none of the above
+
+The impossible_constraints / catalog_gap split requires the query_spec to
+carry a `satisfiable` bool field (added in Phase 2.6). Queries without the
+field default to catalog_gap, since unknown = assume real products exist.
 """
 
 
@@ -46,16 +53,22 @@ def classify_failure(result: dict) -> str:
     if missing_spec_violations:
         return "missing_spec_failure"
 
-    # 5. no_results (unexpected)
-    if not ranked and not expected_no_products:
-        return "no_results"
+    # 5-6. no ranked products
+    if not ranked:
+        if not expected_no_products:
+            # Unexpected empty results — genuine failure
+            return "no_results"
+        # Expected empty results — classify by whether constraints were
+        # physically satisfiable or just absent from the catalog
+        satisfiable = query_spec.get("satisfiable", True)
+        if not satisfiable:
+            return "impossible_constraints"
+        return "catalog_gap"
 
-    # 6. ranking_failure — valid candidates existed but top result is poor
-    # Heuristic: filtered_products has more items than ranked suggests were used
+    # 7. ranking_failure — valid candidates existed but top result is poor
     filtered = result.get("filtered_products", [])
-    if ranked and filtered:
+    if filtered:
         top_id = ranked[0].get("id")
-        # If top result is not in filtered at all, something went wrong
         filtered_ids = {p.get("id") for p in filtered}
         if top_id not in filtered_ids:
             return "ranking_failure"
@@ -68,7 +81,7 @@ def failure_distribution(results: list) -> dict:
     Count failure modes across a list of results.
 
     Returns a dict mapping each mode to its count, e.g.:
-      {"success": 5, "missing_spec_failure": 1, ...}
+      {"success": 5, "catalog_gap": 2, "impossible_constraints": 1}
     """
     counts: dict = {}
     for result in results:
