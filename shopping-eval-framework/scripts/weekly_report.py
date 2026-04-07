@@ -7,6 +7,7 @@ Usage:
 """
 import sys
 import os
+import uuid
 from datetime import date
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
@@ -19,6 +20,7 @@ from evals.canonical_queries import CANONICAL_QUERIES  # noqa: E402
 from evals.metrics.compute_metrics import compute_metrics  # noqa: E402
 from evals.metrics.failure_analysis import failure_distribution  # noqa: E402
 from evals.insights.analyze_results import analyze  # noqa: E402
+from evals.persistence import init_db, save_result  # noqa: E402
 
 EMPTY_STATE = {
     "conversation_history": [],
@@ -62,6 +64,8 @@ def _fmt(value) -> str:
 def main():
     today = date.today().isoformat()
     n_queries = len(CANONICAL_QUERIES)
+    run_id = str(uuid.uuid4())
+    init_db()
 
     print(f"\n{'='*50}")
     print("  Shopping Agent Weekly Eval Report")
@@ -69,6 +73,7 @@ def main():
     print(f"  Date:    {today}")
     print(f"  Mode:    full")
     print(f"  Queries: {n_queries}")
+    print(f"  Run ID:  {run_id}")
     print(f"{'='*50}\n")
 
     results = []
@@ -77,6 +82,7 @@ def main():
             sys.stdout.write(f"  Running [{q['id']}]... ")
             sys.stdout.flush()
             result = _run_query(q)
+            save_result(result, run_id)
             results.append(result)
             ranked = len(result.get("ranked_products", []))
             print(f"done ({ranked} ranked)")

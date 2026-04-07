@@ -11,6 +11,7 @@ Usage:
 import sys
 import os
 import argparse
+import uuid
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
@@ -21,6 +22,7 @@ from agent.graph import agent  # noqa: E402
 from evals.canonical_queries import CANONICAL_QUERIES  # noqa: E402
 from evals.metrics.compute_metrics import compute_metrics  # noqa: E402
 from evals.metrics.failure_analysis import failure_distribution  # noqa: E402
+from evals.persistence import init_db, save_result  # noqa: E402
 
 EMPTY_STATE = {
     "conversation_history": [],
@@ -134,6 +136,9 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
+    run_id = str(uuid.uuid4())
+    init_db()
+
     queries = select_queries(args.mode, args.query_ids)
     results = []
 
@@ -143,6 +148,7 @@ if __name__ == "__main__":
                 result = run_multiturn_query(q)
             else:
                 result = run_single_query(q)
+            save_result(result, run_id)
             results.append(result)
         except Exception as e:
             print(f"ERROR on {q['id']}: {e}")
@@ -151,3 +157,4 @@ if __name__ == "__main__":
         metrics = compute_metrics(results)
         failures = failure_distribution(results)
         print_metrics_summary(metrics, failures)
+        print(f"  Results saved to .eval_results/traces.db  (run_id: {run_id})")
