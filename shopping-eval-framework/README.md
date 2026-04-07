@@ -1,6 +1,6 @@
 # Shopping Agent Eval Framework
 
-A production-style evaluation framework for a multi-turn conversational shopping agent built with LangGraph + Gemini. Demonstrates the full lifecycle of eval-driven agent development: guardrail design, constraint checking, groundedness scoring, SQLite-backed persistence, and Langfuse observability with drift detection.
+A production-style evaluation framework for a multi-turn conversational shopping agent built with LangGraph + Gemini. Demonstrates the full lifecycle of eval-driven agent development: guardrail design, constraint checking, groundedness scoring, Langfuse-managed prompt versioning, SQLite-backed persistence, and Langfuse observability with drift detection.
 
 ---
 
@@ -48,6 +48,8 @@ Fast pytest suite covering each node in isolation:
 | `test_intent_extraction.py` | Constraint extraction from natural language |
 | `test_response_generation.py` | Response only includes grounded products |
 
+`test_groundedness.py` includes a secondary `test_deepeval_hallucination_metric` that uses DeepEval's `HallucinationMetric` (LLM-jury method) as an independent cross-check. Our GroundednessNode checks spec-by-spec for missing fields; DeepEval prompts an LLM to judge whether a response is supported by the provided context. Agreement validates the approach; divergence is a signal worth investigating.
+
 ### Phase 2 — Integration tests
 End-to-end tests against the full LangGraph pipeline:
 
@@ -64,6 +66,14 @@ Every eval run is instrumented with full traces:
 - **Drift detection**: `weekly_report.py` compares current run to 7-day Langfuse baseline (5% threshold)
 - **A/A' comparison**: `--version` flag tags traces for side-by-side model comparison
 - **SQLite persistence**: every run saved to `.eval_results/traces.db` with `langfuse_trace_id` for cross-referencing
+
+### Phase 4 — Prompt versioning (Langfuse)
+All LLM prompts are managed through Langfuse for version-controlled, deployment-free iteration:
+- **Canonical registry**: `agent/prompts.py` defines all 3 prompts (`intent-extraction`, `groundedness-check`, `response-generation`) with `{{double_brace}}` variable syntax
+- **Runtime fetch**: nodes call `compile_to_messages(name, **kwargs)` which fetches `label="production"` from Langfuse (60s TTL cache) — edits in the Langfuse UI take effect without a deploy
+- **Version attribution**: each node logs `prompt_name` + `prompt_version` to its Langfuse span, so every trace shows which prompt version produced it
+- **Local fallback**: `_LocalPrompt` mirrors the same `.compile()` API when `LANGFUSE_PUBLIC_KEY` is not set — all tests pass without Langfuse credentials
+- **Seed script**: `scripts/seed_prompts.py` bootstraps or updates prompts in Langfuse
 
 ---
 
@@ -85,12 +95,18 @@ pip install -r requirements.txt
 
 Create a `.env` file:
 ```
-GOOGLE_API_KEY=your_gemini_key
+GEMINI_API_KEY=your_gemini_key
 
-# Optional — enables Langfuse tracing and drift detection
+# Optional — enables Langfuse tracing, drift detection, and prompt management
 LANGFUSE_PUBLIC_KEY=...
 LANGFUSE_SECRET_KEY=...
 LANGFUSE_HOST=https://cloud.langfuse.com
+```
+
+If using Langfuse, bootstrap prompts once after setup:
+```bash
+python scripts/seed_prompts.py        # register all 3 prompts with label=production
+python scripts/seed_prompts.py --check  # verify current versions without writing
 ```
 
 ---
@@ -122,7 +138,25 @@ python scripts/weekly_report.py
 
 # Interactive chat
 python scripts/chat.py
+
+# Prompt management
+python scripts/seed_prompts.py                # bootstrap prompts (run once)
+python scripts/seed_prompts.py --force        # push a new version to Langfuse
+python scripts/seed_prompts.py --check        # print current versions, no writes
 ```
+
+### Prompt iteration workflow
+
+```
+1. Edit prompt text in agent/prompts.py  →  PROMPT_DEFINITIONS
+2. python scripts/seed_prompts.py --force   →  new version created in Langfuse
+3. python scripts/run_evals.py --version v3  →  runs tagged with new version
+4. Compare avg_groundedness between versions in Langfuse dashboard
+   (filter by prompt_version in span metadata)
+```
+
+Alternatively, edit the prompt directly in the Langfuse UI and promote to
+`label="production"` — the agent picks it up within 60 seconds, no deploy needed.
 
 ---
 
@@ -163,6 +197,22 @@ The mock catalog deliberately includes:
 | `avg_groundedness` | Average LLM groundedness score across ranked products | ≥ 0.70 |
 | `no_valid_results_rate` | % queries returning zero valid results | ≤ 0.10 |
 | `oos_rate_top1` | % queries where top result is out of stock | ≤ 0.05 |
+
+---
+
+## Eval coverage gaps
+
+This suite is intentionally scoped to offline accuracy. Known gaps:
+
+| Gap | What it would require |
+|---|---|
+| Response quality beyond groundedness (helpfulness, tone, verbosity) | LLM-as-judge rubric on `final_response` |
+| Spec citation accuracy (right product, wrong spec value cited) | Per-claim fact extraction + verification |
+| Multi-turn constraint forgetting | Cross-turn constraint accumulation assertions |
+| Query cost and latency | Token counting + wall-clock timing per node |
+| Run-over-run variance (LLM non-determinism) | N=3+ repeated runs, per-metric std dev |
+| Live user signal (clicks, purchases, returns) | Online eval infrastructure, attribution window |
+| Semantic similarity to ideal response | Reference answers + embedding similarity |
 
 ---
 

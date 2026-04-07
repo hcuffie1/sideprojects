@@ -1,9 +1,9 @@
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_core.messages import SystemMessage, HumanMessage
 import json
 import os
 from dotenv import load_dotenv
 from agent.tracing import traced_node
+from agent.prompts import compile_to_messages
 
 load_dotenv()
 
@@ -12,17 +12,6 @@ llm = ChatGoogleGenerativeAI(
     temperature=0,
     google_api_key=os.environ["GEMINI_API_KEY"]
 )
-
-RESPONSE_SYSTEM = """You are a shopping assistant. Generate a helpful response
-recommending products to the user.
-
-RULES:
-1. Only recommend products that are in stock
-2. Only make claims supported by actual product specs — never infer capabilities
-3. If a spec field is missing, say "spec not listed" rather than guessing
-4. Be direct about what you know and don't know
-5. Never claim a product can do something if the spec doesn't say so
-"""
 
 
 @traced_node("ResponseNode")
@@ -55,18 +44,20 @@ def response_node(state: dict) -> dict:
         }
 
     products_str = json.dumps(trustworthy[:3], indent=2)
-    prompt = f"""User query: {query}
+    messages, prompt_version = compile_to_messages(
+        "response-generation", query=query, products=products_str
+    )
 
-Products I can recommend (all in stock, specs verified):
-{products_str}
+    # Log prompt version to the current Langfuse span for attribution
+    try:
+        from langfuse import get_client
+        get_client().update_current_span(metadata={
+            "prompt_name": "response-generation",
+            "prompt_version": prompt_version,
+        })
+    except Exception:
+        pass
 
-Write a helpful recommendation. For each product, only cite spec values
-that are explicitly listed in the specs object."""
-
-    messages = [
-        SystemMessage(content=RESPONSE_SYSTEM),
-        HumanMessage(content=prompt)
-    ]
     response = llm.invoke(messages)
 
     updated_history = state.get("conversation_history", []) + [

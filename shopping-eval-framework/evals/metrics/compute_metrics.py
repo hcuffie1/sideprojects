@@ -6,30 +6,20 @@ Usage:
     from evals.metrics.compute_metrics import compute_metrics
     metrics = compute_metrics(results)
 """
+import sys
+import os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
+
+from agent.nodes.constraint_check_node import check_constraint  # noqa: E402
 
 
 def _passes_hard_constraints(product: dict, constraints: list) -> bool:
     """Return True if the product satisfies every hard constraint."""
-    OPS = {
-        "lte": lambda a, b: a <= b,
-        "gte": lambda a, b: a >= b,
-        "eq": lambda a, b: a == b,
-        "contains": lambda a, b: b in str(a),
-    }
-    for c in constraints:
-        if not c.get("is_hard"):
-            continue
-        field = c["field"]
-        op = c["op"]
-        value = c["value"]
-        # look in specs first, then top-level
-        specs = product.get("specs", {})
-        actual = specs.get(field, product.get(field))
-        if actual is None:
-            return False
-        if op in OPS and not OPS[op](actual, value):
-            return False
-    return True
+    return all(
+        check_constraint(product, c)[0]
+        for c in constraints
+        if c.get("is_hard")
+    )
 
 
 def compute_metrics(results: list) -> dict:
@@ -96,20 +86,8 @@ def compute_metrics(results: list) -> dict:
             if not c.get("is_hard", True):
                 continue
             constraints_total += 1
-            field = c["field"]
-            op = c["op"]
-            value = c["value"]
-            specs = top1.get("specs", {})
-            actual = specs.get(field, top1.get(field))
-            if actual is not None:
-                OPS = {
-                    "lte": lambda a, b: a <= b,
-                    "gte": lambda a, b: a >= b,
-                    "eq": lambda a, b: a == b,
-                    "contains": lambda a, b: b in str(a),
-                }
-                if op in OPS and OPS[op](actual, value):
-                    constraints_satisfied += 1
+            if check_constraint(top1, c)[0]:
+                constraints_satisfied += 1
 
         # avg_groundedness
         for a in annotations:
