@@ -11,6 +11,8 @@
       "piece_count": 743,
       "skill_level": "intermediate",
       "theme": "city",
+      "building": true,
+      "educational": true,
       "battery_required": false,
       "choking_hazard": true
     },
@@ -29,6 +31,9 @@
       "piece_count": 80,
       "skill_level": "beginner",
       "theme": "basic_building",
+      "building": true,
+      "educational": true,
+      "creative_play": true,
       "battery_required": false,
       "choking_hazard": false
     },
@@ -47,6 +52,9 @@
       "piece_count": 439,
       "skill_level": "advanced",
       "theme": "engineering",
+      "building": true,
+      "educational": true,
+      "stem": true,
       "battery_required": true,
       "battery_type": "AA",
       "choking_hazard": true
@@ -66,6 +74,10 @@
       "piece_count": 32,
       "skill_level": "beginner",
       "theme": "magnetic_building",
+      "building": true,
+      "educational": true,
+      "creative_play": true,
+      "stem": true,
       "battery_required": false,
       "choking_hazard": false
     },
@@ -84,6 +96,9 @@
       "piece_count": 569,
       "skill_level": "advanced",
       "theme": "technic",
+      "building": true,
+      "educational": true,
+      "stem": true,
       "battery_required": false,
       "choking_hazard": true,
       "working_functions": true
@@ -155,7 +170,8 @@
       "max_players": 4,
       "play_time_minutes": 60,
       "battery_required": false,
-      "theme": "strategy"
+      "theme": "strategy",
+      "educational": true
     },
     "description": "Kid-friendly version of the classic Catan strategy game",
     "retailer": "catan_studio"
@@ -173,7 +189,8 @@
       "max_players": 4,
       "play_time_minutes": 30,
       "battery_required": false,
-      "theme": "strategy"
+      "theme": "strategy",
+      "educational": true
     },
     "description": "Simplified train route-building game for young families",
     "retailer": "days_of_wonder"
@@ -191,7 +208,8 @@
       "max_players": 8,
       "play_time_minutes": 30,
       "battery_required": false,
-      "theme": "word_game"
+      "theme": "word_game",
+      "educational": true
     },
     "description": "Picture-based cooperative word association game for groups",
     "retailer": "czech_games"
@@ -208,6 +226,8 @@
       "battery_required": true,
       "battery_type": "AA",
       "interactive": true,
+      "educational": true,
+      "creative_play": true,
       "includes_stool": true
     },
     "description": "Interactive learning desk with drawing board and educational activities",
@@ -225,6 +245,7 @@
       "piece_count": 4000,
       "battery_required": false,
       "theme": "crafts",
+      "creative_play": true,
       "choking_hazard": true
     },
     "description": "Fuse bead kit for creating colorful pixel art designs",
@@ -252,6 +273,9 @@
       "piece_count": 45,
       "skill_level": "beginner",
       "theme": "stem",
+      "building": true,
+      "educational": true,
+      "stem": true,
       "battery_required": false,
       "includes_activity_book": true
     },
