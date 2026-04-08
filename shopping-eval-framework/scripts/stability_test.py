@@ -39,9 +39,13 @@ def main():
     parser.add_argument(
         "--n", type=int, default=3, help="Number of runs (default: 3)"
     )
+    parser.add_argument(
+        "--version", default="v1",
+        help="Agent version tag for A/A' comparison in Langfuse (default: v1)"
+    )
     args = parser.parse_args()
 
-    report = run_stability_test(args.query_id, args.n)
+    report = run_stability_test(args.query_id, args.n, args.version)
     print_stability_report(report)
     get_client().flush()
 

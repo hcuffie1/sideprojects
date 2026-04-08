@@ -120,15 +120,16 @@ def _metric_stats(values: list) -> dict:
 # ── core runner ───────────────────────────────────────────────────────────────
 
 @observe()
-def _run_once(query_spec: dict, run_index: int) -> dict:
+def _run_once(query_spec: dict, run_index: int, version: str = "v1") -> dict:
     get_client().update_current_span(
         name=f"stability-{query_spec['id']}-run{run_index}",
         input={"query": query_spec.get("query", "")},
         metadata={
             "query_id": query_spec["id"],
             "eval_type": "stability_test",
+            "agent_version": version,
             "run_index": run_index,
-            "tags": ["eval", "stability_test"],
+            "tags": ["eval", "stability_test", version],
         },
     )
     result = agent.invoke({**EMPTY_STATE, "query": query_spec["query"]})
@@ -139,7 +140,7 @@ def _run_once(query_spec: dict, run_index: int) -> dict:
     return result
 
 
-def run_stability_test(query_id: str, n: int = 3) -> dict:
+def run_stability_test(query_id: str, n: int = 3, version: str = "v1") -> dict:
     """
     Run a single canonical query N times and return variance statistics.
 
@@ -166,7 +167,7 @@ def run_stability_test(query_id: str, n: int = 3) -> dict:
     for i in range(1, n + 1):
         sys.stdout.write(f"    Run {i}/{n}... ")
         sys.stdout.flush()
-        result = _run_once(query_spec, i)
+        result = _run_once(query_spec, i, version)
         results.append(result)
         g = _groundedness(result)
         mode = classify_failure(result)
