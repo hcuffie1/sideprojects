@@ -21,6 +21,7 @@ print_stability_report(report) -> None
     Prints a formatted variance summary to stdout.
 """
 import sys
+import time
 import statistics
 
 from langfuse import observe, get_client
@@ -132,12 +133,22 @@ def _run_once(query_spec: dict, run_index: int, version: str = "v1") -> dict:
             "tags": ["eval", "stability_test", version],
         },
     )
-    result = agent.invoke({**EMPTY_STATE, "query": query_spec["query"]})
-    result["query_spec"] = query_spec
-    get_client().update_current_span(
-        output={"response": result.get("final_response", "")[:200]},
-    )
-    return result
+    last_exc = None
+    for attempt in range(3):
+        try:
+            result = agent.invoke({**EMPTY_STATE, "query": query_spec["query"]})
+            result["query_spec"] = query_spec
+            get_client().update_current_span(
+                output={"response": result.get("final_response", "")[:200]},
+            )
+            return result
+        except Exception as exc:
+            last_exc = exc
+            if attempt < 2:
+                wait = 15 * (attempt + 1)
+                print(f" [transient error, retrying in {wait}s: {exc}]")
+                time.sleep(wait)
+    raise last_exc
 
 
 def run_stability_test(query_id: str, n: int = 3, version: str = "v1") -> dict:

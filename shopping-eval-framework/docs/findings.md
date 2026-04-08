@@ -1,4 +1,4 @@
-# Eval Findings: Run 1 → Run 2
+# Eval Findings: Run 1 → Run 4
 
 ## Purpose
 
@@ -149,21 +149,40 @@ The LLM interprets "less than 24 inches wide" as either `width_inches` or `diame
 
 This is not a groundedness problem or a catalog problem. **It is a schema alignment problem.** IntentNode is free-form and generates field names from natural language; ConstraintCheckNode does exact string matching against catalog spec keys. When these diverge, the pipeline silently produces no results — no error, no warning, just an empty ranked list.
 
-### Hypothesis for Run 4
+### Option B attempted: post-retrieval field normalization (difflib)
 
-Add a canonical field name list to the intent-extraction prompt in `agent/prompts.py` for each product category. The LLM should be told: *"For outdoor_furniture, use these field names: `diameter_inches`, `max_umbrella_size_feet`, `weight_lbs`, `material`, `color`. Never invent synonyms."*
+**Implemented:** Added `_normalize_constraint_fields()` to `agent/nodes/retrieval_node.py`. After loading in-stock products, it remaps any constraint field not found in the product specs to the closest match via `get_close_matches(cutoff=0.6)` from stdlib `difflib`.
 
-**Predicted result:** `failure_mode_consistency=True` for q_001, `no_valid_results_rate` drops from 0.273 toward 0.13 (the 3 remaining expected zeros from impossible/catalog gaps).
+**Result: partially correct but reveals a deeper root cause.**
+
+The `outdoor_furniture` catalog is mixed-type — it contains umbrella bases (`of_001`–`of_010`), chairs (`of_011`–`of_013`), and tables (`of_014`–`of_015`). `seat_width_inches` is a real spec field on chairs. When IntentNode emits `width_inches` for a q_001 run, `get_close_matches` maps it to `seat_width_inches` (similarity above cutoff). But umbrella bases don't have `seat_width_inches` — ConstraintCheckNode then classifies every umbrella base as `spec_missing` on a hard constraint, producing the same empty result.
+
+**Revised diagnosis:** Option B fixes the synonym problem when the category is product-type-homogeneous. In a mixed catalog, fuzzy matching cannot distinguish "valid field for this product type" from "valid field for this category." The correct fix is upstream: prevent IntentNode from generating invalid field names in the first place.
+
+---
+
+### Hypothesis for Run 4: canonical field names in intent prompt (Option A-lite)
+
+**Implemented:** Added to `PROMPT_DEFINITIONS["intent-extraction"]` system prompt in `agent/prompts.py`:
+
+```
+For outdoor_furniture products, always use these exact field names:
+diameter_inches, max_umbrella_size_feet, weight_lbs, material.
+Never substitute synonyms.
+```
+
+Both fixes are active simultaneously — the prompt constraint prevents `width_inches` from being generated; Option B's normalization remains as a backstop for any residual drift or other categories.
+
+**Predicted result:** `failure_mode_consistency=True` for q_001 across 5 runs. `no_valid_results_rate` drops from 0.261 toward ~0.13 (4 expected zeros from impossible constraints / catalog gaps remain).
 
 **Test:**
 ```bash
-# Edit agent/prompts.py → PROMPT_DEFINITIONS["intent-extraction"] system prompt
-# Push to Langfuse
+# Push updated prompt to Langfuse
 python scripts/seed_prompts.py --force
-# Run stability test to verify
-python scripts/stability_test.py q_001 --n 5
-# Run full suite tagged for comparison
-python scripts/run_evals.py --version v4_canonical_fields
+# Stability test
+python scripts/stability_test.py q_001 --n 5 --version v3_prompt_fields
+# Full suite for suite-level comparison
+python scripts/run_evals.py --version v3_prompt_fields
 ```
 
 ---
