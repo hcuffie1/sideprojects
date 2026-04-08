@@ -1,7 +1,7 @@
 """
 Priority-ordered action list derived from failure_distribution() output.
 
-Priority score = failure_rate × business_impact_weight × fixability_score
+Priority score = failure_rate x business_impact_weight x fixability_score
 
 Business impact weights reflect user-trust damage from each failure mode:
   output_violations      10  guardrail breach — violating product reaches user
@@ -13,7 +13,7 @@ Business impact weights reflect user-trust damage from each failure mode:
   ranking_failure         3  suboptimal ordering, valid products exist
   impossible_constraints  1  user constraint physically impossible (not fixable)
 
-Fixability scores (1–3):
+Fixability scores (1-3):
   3 = straightforward code or data fix
   2 = prompt or catalog enrichment work needed
   1 = structural limitation, low ROI to fix

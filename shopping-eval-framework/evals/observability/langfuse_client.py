@@ -15,14 +15,23 @@ load_dotenv()
 
 def get_langfuse_api_client():
     """
-    Return a Langfuse client for API queries, or None if not configured.
-    Only needed for drift detection — not for instrumentation.
+    Return a LangfuseAPI client for querying historical data, or None if not
+    configured. Only needed for drift detection — not for instrumentation.
+
+    Uses LangfuseAPI (the REST query client) rather than Langfuse() (the
+    instrumentation client). In v4 these are separate objects.
     """
-    if not os.getenv("LANGFUSE_PUBLIC_KEY"):
+    public_key = os.getenv("LANGFUSE_PUBLIC_KEY")
+    secret_key = os.getenv("LANGFUSE_SECRET_KEY")
+    if not public_key or not secret_key:
         return None
     try:
-        from langfuse import Langfuse
-        return Langfuse()
+        from langfuse.api import LangfuseAPI
+        return LangfuseAPI(
+            base_url=os.getenv("LANGFUSE_HOST", "https://cloud.langfuse.com"),
+            username=public_key,
+            password=secret_key,
+        )
     except Exception as e:
         print(f"[langfuse] API client init failed: {e}")
         return None

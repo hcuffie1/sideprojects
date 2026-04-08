@@ -43,7 +43,7 @@ def get_baseline_scores(
 
     for name in metric_names:
         try:
-            result = lf.api.score.list(
+            result = lf.scores.get_many(
                 name=name,
                 from_timestamp=start,
                 to_timestamp=end,
