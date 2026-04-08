@@ -117,7 +117,7 @@ python scripts/seed_prompts.py --check  # verify current versions without writin
 # Logic-only tests (no API key needed, fast)
 pytest evals/phase1/test_constraint_checking.py evals/phase1/test_retrieval.py evals/phase1/test_ranking.py -v
 
-# The fabricator test (requires GOOGLE_API_KEY)
+# The fabricator test (requires GEMINI_API_KEY)
 pytest evals/phase1/test_groundedness.py::test_no_confident_fabrication -v
 
 # Full Phase 1 test suite
