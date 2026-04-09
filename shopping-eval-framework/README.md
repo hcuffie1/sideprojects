@@ -255,15 +255,15 @@ The mock catalog deliberately includes:
 
 This suite is intentionally scoped to offline accuracy. Known gaps:
 
-| Gap | What it would require |
-|---|---|
-| Response quality beyond groundedness (helpfulness, tone, verbosity) | LLM-as-judge rubric on `final_response` |
-| Spec citation accuracy (right product, wrong spec value cited) | Per-claim fact extraction + verification |
-| Multi-turn constraint forgetting | Cross-turn constraint accumulation assertions |
-| Query cost and latency | Token counting + wall-clock timing per node |
-| Run-over-run variance (LLM non-determinism) | N=3+ repeated runs, per-metric std dev |
-| Live user signal (clicks, purchases, returns) | Online eval infrastructure, attribution window |
-| Semantic similarity to ideal response | Reference answers + embedding similarity |
+| Gap | What it would require | Status |
+|---|---|---|
+| Spec citation accuracy (right product, wrong spec value cited) | Per-claim fact extraction + verification against `product.specs` | **Next priority** — trust-critical for shopping; groundedness detects hallucination at product level but not value level |
+| Multi-turn constraint forgetting | Cross-turn constraint accumulation assertions; canonical multi-turn query set | **Next priority** — all canonical queries are single-turn; real shopping conversations are not |
+| Query cost and latency | Token counting + wall-clock timing per node via LLM usage metadata | Medium — required for production readiness argument |
+| Response quality beyond groundedness (helpfulness, tone, verbosity) | LLM-as-judge rubric on `final_response` | Low — subjective; groundedness is a stronger signal for this domain |
+| Run-over-run variance (LLM non-determinism) | N=3+ repeated runs, per-metric std dev | **Implemented** — `evals/metrics/stability.py`, `scripts/stability_test.py` |
+| Live user signal (clicks, purchases, returns) | Online eval infrastructure, attribution window | Out of scope for offline eval suite |
+| Semantic similarity to ideal response | Reference answers + embedding similarity | Out of scope — no reference answers defined |
 
 ---
 
