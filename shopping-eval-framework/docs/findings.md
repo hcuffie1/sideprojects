@@ -1,4 +1,4 @@
-# Eval Findings: Run 1 → Run 2
+# Eval Findings: Run 1 → Run 4
 
 ## Purpose
 
@@ -104,3 +104,117 @@ Separately, the remaining `no_valid_results_rate` decomposes as:
 |---|---|
 | GroundednessNode LLM conservatism on boolean specs | Revise prompt: explicitly distinguish claim types (boolean flag vs numeric spec vs description) |
 | Multi-category queries (`q_019`, `q_020`) | Update IntentNode to detect and split multi-category intent; route each sub-query separately |
+
+---
+
+## Run 3 — Stability testing and non-determinism diagnosis
+
+**Command:** `python scripts/stability_test.py q_001 --n 3`
+
+### Finding: q_001 is highly unstable
+
+q_001 is the primary umbrella base query: *"umbrella base that can hold a 15 foot umbrella and is less than 24 inches wide"*. It has two hard constraints and a known correct answer (`of_003`, Restoration Hardware umbrella base, in stock).
+
+Stability results:
+
+| Run | failure_mode | groundedness |
+|---|---|---|
+| 1 | `success` | 1.000 |
+| 2 | `no_results` | 0.000 |
+| 3 | `no_results` | 0.000 |
+
+```
+groundedness     0.3333 ±0.5774  cv=1.732  ⚠ high variance
+top1_valid       0.3333 ±0.5774  cv=1.732  ⚠ high variance
+product_set_stability            0.0000    ⚠ unstable
+failure_mode_consistency         ✗  [success, no_results, no_results]
+```
+
+CV of 1.73 means the standard deviation is 173% of the mean — this metric is essentially noise on this query, so any single-run result cannot be trusted.
+
+### Diagnosis: IntentNode generates non-canonical field names
+
+Pipeline stage inspection for a failing run showed `candidates=0`, meaning the failure occurs before RetrievalNode even runs. Further investigation:
+
+```bash
+# IntentNode run across 5 attempts:
+Run 1: constraints=[{field: "max_umbrella_size_feet", ...}, {field: "width_inches", ...}]
+Run 2: constraints=[{field: "max_umbrella_size_feet", ...}, {field: "width_inches", ...}]
+Run 3: constraints=[{field: "max_umbrella_size_feet", ...}, {field: "width_inches", ...}]
+Run 4: constraints=[{field: "max_umbrella_size_feet", ...}, {field: "diameter_inches", ...}]
+Run 5: constraints=[{field: "max_umbrella_size_feet", ...}, {field: "diameter_inches", ...}]
+```
+
+The LLM interprets "less than 24 inches wide" as either `width_inches` or `diameter_inches` — both are semantically valid for a circular base. But the catalog spec field is `diameter_inches`. When IntentNode emits `width_inches`, `check_constraint` looks for `product.specs["width_inches"]`, finds `None`, classifies it as `spec_missing` (hard constraint violation), and filters every candidate out. `ranked_products=[]` results.
+
+This is not a groundedness problem or a catalog problem. **It is a schema alignment problem.** IntentNode is free-form and generates field names from natural language; ConstraintCheckNode does exact string matching against catalog spec keys. When these diverge, the pipeline silently produces no results — no error, no warning, just an empty ranked list.
+
+### Option B attempted: post-retrieval field normalization (difflib)
+
+**Implemented:** Added `_normalize_constraint_fields()` to `agent/nodes/retrieval_node.py`. After loading in-stock products, it remaps any constraint field not found in the product specs to the closest match via `get_close_matches(cutoff=0.6)` from stdlib `difflib`.
+
+**Result: partially correct but reveals a deeper root cause.**
+
+The `outdoor_furniture` catalog is mixed-type — it contains umbrella bases (`of_001`–`of_010`), chairs (`of_011`–`of_013`), and tables (`of_014`–`of_015`). `seat_width_inches` is a real spec field on chairs. When IntentNode emits `width_inches` for a q_001 run, `get_close_matches` maps it to `seat_width_inches` (similarity above cutoff). But umbrella bases don't have `seat_width_inches` — ConstraintCheckNode then classifies every umbrella base as `spec_missing` on a hard constraint, producing the same empty result.
+
+**Revised diagnosis:** Option B fixes the synonym problem when the category is product-type-homogeneous. In a mixed catalog, fuzzy matching cannot distinguish "valid field for this product type" from "valid field for this category." The correct fix is upstream: prevent IntentNode from generating invalid field names in the first place.
+
+---
+
+### Hypothesis for Run 4: canonical field names in intent prompt (Option A-lite)
+
+**Implemented:** Added to `PROMPT_DEFINITIONS["intent-extraction"]` system prompt in `agent/prompts.py`:
+
+```
+For outdoor_furniture products, always use these exact field names:
+diameter_inches, max_umbrella_size_feet, weight_lbs, material.
+Never substitute synonyms.
+```
+
+Both fixes are active simultaneously — the prompt constraint prevents `width_inches` from being generated; Option B's normalization remains as a backstop for any residual drift or other categories.
+
+**Predicted result:** `failure_mode_consistency=True` for q_001 across 5 runs. `no_valid_results_rate` drops from 0.261 toward ~0.13 (4 expected zeros from impossible constraints / catalog gaps remain).
+
+**Test:**
+```bash
+# Push updated prompt to Langfuse
+python scripts/seed_prompts.py --force
+# Stability test
+python scripts/stability_test.py q_001 --n 5 --version v3_prompt_fields
+# Full suite for suite-level comparison
+python scripts/run_evals.py --version v3_prompt_fields
+```
+
+---
+
+## Open hypotheses (pending Run 4)
+
+### Hallucination (2 cases, priority score 1.46)
+
+**Priority action:** Revise the `groundedness-check` prompt in `agent/prompts.py` to explicitly handle boolean spec fields. Currently the LLM judges boolean fields (`educational: true`) with ambiguous confidence scores (0.3–0.5) when the user's constraint is phrased as natural language ("educational toy"). Adding an instruction like *"If a spec field is a boolean set to True and the constraint asks for that property, treat it as fully grounded (score: 1.0)"* should eliminate these false positives.
+
+**Predicted result:** `avg_groundedness` rises from 0.731 toward ≥0.800; hallucination count drops from 2 to 0.
+
+**Test:**
+```bash
+python scripts/seed_prompts.py --force
+python scripts/run_evals.py --version v4_groundedness_boolean
+# Compare avg_groundedness between v2 and v4 traces in Langfuse
+```
+
+### Catalog gap (2 cases, priority score 0.91)
+
+**Priority action:** Identify which query categories have no catalog coverage:
+
+```bash
+python -c "
+from evals.canonical_queries import CANONICAL_QUERIES
+for q in CANONICAL_QUERIES:
+    if q.get('expected_no_products_found') and q.get('satisfiable', True):
+        print(q['id'], q.get('category'), q.get('description'))
+"
+```
+
+For each identified category, either add 2–3 catalog entries that satisfy the constraints, or mark the query `satisfiable=False` if the constraint is genuinely unserviceable (reclassifies from `catalog_gap` to `impossible_constraints`, lower priority score).
+
+**Predicted result:** `no_valid_results_rate` drops by `count/total` for each gap closed.

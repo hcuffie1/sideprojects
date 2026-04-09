@@ -29,6 +29,9 @@ from evals.metrics.failure_analysis import (  # noqa: E402
     failure_distribution, classify_failure
 )
 from evals.persistence import init_db, save_result  # noqa: E402
+from evals.metrics.stability import (  # noqa: E402
+    run_stability_test, print_stability_report
+)
 
 EMPTY_STATE = {
     "conversation_history": [],
@@ -263,10 +266,49 @@ if __name__ == "__main__":
         nargs="*",
         help="Optional specific query IDs to run"
     )
+    parser.add_argument(
+        "--stability",
+        action="store_true",
+        help="Run each single-turn canonical query 3x and report variance"
+    )
     args = parser.parse_args()
 
     run_id = str(uuid.uuid4())
     init_db()
+
+    if args.stability:
+        single_turn = [
+            q for q in CANONICAL_QUERIES if q.get("type") != "multi_turn"
+        ]
+        reports = []
+        for q in single_turn:
+            try:
+                report = run_stability_test(q["id"], n=3)
+                print_stability_report(report)
+                reports.append(report)
+            except Exception as e:
+                print(f"ERROR on {q['id']}: {e}")
+        print(f"\n{'='*60}")
+        print(f"STABILITY SUMMARY  ({len(reports)} queries, n=3 each)")
+        print(f"{'='*60}")
+        high_variance = [
+            r for r in reports
+            if any(
+                (s["cv"] or 0) > 0.1
+                for s in r["metrics"].values()
+            )
+        ]
+        inconsistent = [
+            r for r in reports if not r["failure_mode_consistency"]
+        ]
+        print(f"  High-variance queries (CV > 0.1): {len(high_variance)}")
+        for r in high_variance:
+            print(f"    {r['query_id']}")
+        print(f"  Inconsistent failure modes:       {len(inconsistent)}")
+        for r in inconsistent:
+            print(f"    {r['query_id']}  {r['failure_modes_seen']}")
+        get_client().flush()
+        sys.exit(0)
 
     queries = select_queries(args.mode, args.query_ids)
     results = []

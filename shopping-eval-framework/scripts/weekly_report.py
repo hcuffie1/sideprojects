@@ -21,6 +21,7 @@ from agent.graph import agent  # noqa: E402
 from evals.canonical_queries import CANONICAL_QUERIES  # noqa: E402
 from evals.metrics.compute_metrics import compute_metrics  # noqa: E402
 from evals.metrics.failure_analysis import failure_distribution  # noqa: E402
+from evals.metrics.prioritize import prioritize  # noqa: E402
 from evals.insights.analyze_results import analyze  # noqa: E402
 from evals.persistence import init_db, save_result  # noqa: E402
 from evals.observability.drift_detector import (  # noqa: E402
@@ -122,6 +123,7 @@ def main():
     metrics = compute_metrics(results)
     failures = failure_distribution(results)
     insights = analyze(metrics, failures)
+    priority_actions = prioritize(failures, len(results))
 
     print(f"\n{'─'*50}")
     print("METRICS")
@@ -144,6 +146,20 @@ def main():
     ):
         bar = "█" * count
         print(f"  {mode:<30} {count:>3}  {bar}")
+
+    print(f"\n{'─'*50}")
+    print("PRIORITY ACTIONS")
+    print(f"{'─'*50}")
+    if not priority_actions:
+        print("  No failures to prioritize.")
+    for i, action in enumerate(priority_actions, 1):
+        print(
+            f"  {i}. [{action['failure_mode']}]  "
+            f"count={action['count']}  rate={action['rate']:.1%}  "
+            f"score={action['priority_score']:.2f}"
+        )
+        print(f"     → {action['recommended_action']}")
+        print(f"     impact: {action['expected_metric_impact']}")
 
     print(f"\n{'─'*50}")
     print("INSIGHTS")

@@ -50,7 +50,10 @@ PROMPT_DEFINITIONS: dict[str, dict] = {
                     "}\n\n"
                     "Examples of field names: price, diameter_inches, weight_lbs, "
                     "max_umbrella_size_feet,\nage_range_min, battery_life_hours, "
-                    "screen_size_inches"
+                    "screen_size_inches\n\n"
+                    "For outdoor_furniture products, always use these exact "
+                    "field names: diameter_inches, max_umbrella_size_feet, "
+                    "weight_lbs, material. Never substitute synonyms."
                 ),
             },
             {
