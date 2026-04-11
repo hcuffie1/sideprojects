@@ -257,8 +257,8 @@ This suite is intentionally scoped to offline accuracy. Known gaps:
 
 | Gap | What it would require | Status |
 |---|---|---|
-| Spec citation accuracy (right product, wrong spec value cited) | Per-claim fact extraction + verification against `product.specs` | **Next priority** — trust-critical for shopping; groundedness detects hallucination at product level but not value level |
-| Multi-turn constraint forgetting | Cross-turn constraint accumulation assertions; canonical multi-turn query set | **Next priority** — all canonical queries are single-turn; real shopping conversations are not |
+| Spec citation accuracy (right product, wrong spec value cited) | Per-claim fact extraction + verification against `product.specs` | **Implemented** — `evals/metrics/spec_citation.py`; `citation_error` failure mode; `avg_citation_accuracy` in suite metrics |
+| Multi-turn constraint forgetting | Cross-turn constraint accumulation assertions; canonical multi-turn query set | **Implemented** — `evals/metrics/constraint_retention.py`; `scripts/run_multiturn_evals.py`; q_024–q_027 test constraint updates and cross-category pivots |
 | Query cost and latency | Token counting + wall-clock timing per node via LLM usage metadata | Medium — required for production readiness argument |
 | Response quality beyond groundedness (helpfulness, tone, verbosity) | LLM-as-judge rubric on `final_response` | Low — subjective; groundedness is a stronger signal for this domain |
 | Run-over-run variance (LLM non-determinism) | N=3+ repeated runs, per-metric std dev | **Implemented** — `evals/metrics/stability.py`, `scripts/stability_test.py` |

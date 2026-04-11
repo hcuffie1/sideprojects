@@ -187,6 +187,49 @@ python scripts/run_evals.py --version v3_prompt_fields
 
 ---
 
+## New eval capabilities (Phase 5)
+
+### Spec citation accuracy
+
+**Motivation:** Groundedness checks whether a spec field *exists* to back a constraint. It does not detect whether the agent *stated the right value* in `final_response`. A product could pass groundedness (the field is present) while the agent says "30-hour battery" when the spec says 25.
+
+**Implemented:** `evals/metrics/spec_citation.py` — `citation_accuracy(result)` calls an LLM to extract all verifiable claims from `final_response` (numeric values, boolean assertions) and compares them against `ranked_products[0]["specs"]`. Returns a 0.0–1.0 score. Handles both numeric mismatches and boolean assertions ("this is not educational" vs `educational: True`).
+
+Wired into `compute_metrics.py` as `avg_citation_accuracy` and into `failure_analysis.py` as a `citation_error` failure mode (score < 0.5).
+
+**Hypothesis:** Current `avg_citation_accuracy` baseline unknown — will be established in Run 5. The agent uses spec values directly from the catalog, so citation errors are expected to be rare but not zero (LLM may paraphrase numeric values slightly).
+
+**Test:**
+```bash
+python scripts/run_evals.py --version v5_citation_baseline
+# Look for avg_citation_accuracy in output and citation_error in failure distribution
+```
+
+---
+
+### Multi-turn constraint retention
+
+**Motivation:** The IntentNode is instructed to accumulate constraints across turns via the conversation history, but this is unvalidated. A constraint mentioned in turn 1 may silently drop from `parsed_constraints` by turn 3 — producing empty results with no diagnostic signal.
+
+**Implemented:** `evals/metrics/constraint_retention.py` — `check_retention(parsed_constraints, expected)` compares the fields in `parsed_constraints` against the expected accumulated set from `query_spec["turns"]`. `retention_report(turn_states, query_spec)` produces a per-turn breakdown. `scripts/run_multiturn_evals.py` runs all multi-turn queries and prints a retention summary.
+
+Four new canonical queries added (q_024–q_027) to test constraint-update edge cases:
+- **q_024**: weight constraint superseded (≤50 lbs → ≤30 lbs) — tests whether agent carries latest value
+- **q_025**: constraint tightened (battery ≥30hr → ≥40hr) — same field, raised minimum
+- **q_026**: cross-category pivot — user abandons outdoor_furniture, switches to consumer_electronics
+- **q_027**: cross-category additive — multi-intent turn expected to reveal single-category agent limit
+
+**Hypothesis:** q_007 and q_008 (existing multi-turn queries) should pass cleanly — the constraints are additive. q_024 and q_025 (constraint updates on the same field) are riskier — the LLM may carry both versions or drop the constraint entirely. q_026 should pass if IntentNode correctly resets constraints on category pivot. q_027 should produce a known failure (single-category agent), not a silent wrong result.
+
+**Test:**
+```bash
+python scripts/run_multiturn_evals.py
+# Per-query retention rate and forgotten fields printed per turn
+# ⚠ flag = any forgetting detected
+```
+
+---
+
 ## Open hypotheses (pending Run 4)
 
 ### Hallucination (2 cases, priority score 1.46)

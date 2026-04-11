@@ -2,6 +2,9 @@
 Deterministic metrics computed over a list of agent eval results.
 No LLM calls — pure arithmetic over the state dicts returned by agent.invoke().
 
+Exception: avg_citation_accuracy calls the spec_citation LLM evaluator if
+citation scores are not already cached on the results.
+
 Usage:
     from evals.metrics.compute_metrics import compute_metrics
     metrics = compute_metrics(results)
@@ -11,6 +14,7 @@ import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
 from agent.nodes.constraint_check_node import check_constraint  # noqa: E402
+from evals.metrics.spec_citation import citation_accuracy  # noqa: E402
 
 
 def _passes_hard_constraints(product: dict, constraints: list) -> bool:
@@ -55,6 +59,7 @@ def compute_metrics(results: list) -> dict:
     constraints_total = 0
     constraints_satisfied = 0
     groundedness_scores = []
+    citation_scores = []
     no_results_count = 0
     oos_top1_count = 0
 
@@ -95,6 +100,15 @@ def compute_metrics(results: list) -> dict:
             if score is not None:
                 groundedness_scores.append(score)
 
+        # avg_citation_accuracy — use cached score if present, else compute
+        cached = result.get("citation_accuracy")
+        if cached is not None:
+            cit = cached
+        else:
+            cit = citation_accuracy(result)
+        if cit.get("score") is not None:
+            citation_scores.append(cit["score"])
+
     n = len(results)
     runs_with_results = n - no_results_count
 
@@ -109,6 +123,10 @@ def compute_metrics(results: list) -> dict:
         "avg_groundedness": (
             sum(groundedness_scores) / len(groundedness_scores)
             if groundedness_scores else None
+        ),
+        "avg_citation_accuracy": (
+            sum(citation_scores) / len(citation_scores)
+            if citation_scores else None
         ),
         "no_valid_results_rate": no_results_count / n,
         "oos_rate_top1": (

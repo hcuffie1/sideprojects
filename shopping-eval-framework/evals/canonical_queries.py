@@ -335,4 +335,107 @@ CANONICAL_QUERIES = [
         ],
         "description": "Multi-turn — category implied T1, age refinement T2, price+feature T3",
     },
+
+    # ── CONSTRAINT UPDATE / EDGE CASES ────────────────────────────────────────
+
+    {
+        "id": "q_024",
+        "query_type": "multi_turn",
+        "type": "multi_turn",
+        "turns": [
+            {
+                "query": "Show me outdoor umbrella bases that can hold a 15-foot umbrella",
+                "expected_category": "outdoor_furniture",
+                "hard_constraints": [
+                    {"field": "max_umbrella_size_feet", "op": "gte", "value": 15},
+                ],
+            },
+            {
+                "query": "I also need one that's under 50 pounds",
+                "hard_constraints": [
+                    {"field": "max_umbrella_size_feet", "op": "gte", "value": 15},
+                    {"field": "weight_lbs", "op": "lte", "value": 50},
+                ],
+            },
+            {
+                "query": "Hmm, actually I need it under 30 pounds",
+                "hard_constraints": [
+                    {"field": "max_umbrella_size_feet", "op": "gte", "value": 15},
+                    {"field": "weight_lbs", "op": "lte", "value": 30},
+                ],
+            },
+        ],
+        "description": "Constraint update — weight constraint superseded across turns (≤50 → ≤30)",
+    },
+    {
+        "id": "q_025",
+        "query_type": "multi_turn",
+        "type": "multi_turn",
+        "turns": [
+            {
+                "query": "I need wireless headphones with at least 30 hours of battery",
+                "expected_category": "consumer_electronics",
+                "hard_constraints": [
+                    {"field": "battery_life_hours", "op": "gte", "value": 30},
+                ],
+            },
+            {
+                "query": "My budget is under $100",
+                "hard_constraints": [
+                    {"field": "battery_life_hours", "op": "gte", "value": 30},
+                    {"field": "price", "op": "lte", "value": 100},
+                ],
+            },
+            {
+                "query": "Wait, I actually need at least 40 hours battery life",
+                "hard_constraints": [
+                    {"field": "battery_life_hours", "op": "gte", "value": 40},
+                    {"field": "price", "op": "lte", "value": 100},
+                ],
+            },
+        ],
+        "description": "Constraint tightening — battery minimum raised mid-conversation (≥30 → ≥40)",
+    },
+    {
+        "id": "q_026",
+        "query_type": "multi_turn",
+        "type": "multi_turn",
+        "turns": [
+            {
+                "query": "Find me a patio umbrella base under $200",
+                "expected_category": "outdoor_furniture",
+                "hard_constraints": [
+                    {"field": "price", "op": "lte", "value": 200},
+                ],
+            },
+            {
+                "query": "Actually forget that — I need wireless headphones instead, under $150",
+                "expected_category": "consumer_electronics",
+                "hard_constraints": [
+                    {"field": "price", "op": "lte", "value": 150},
+                ],
+            },
+        ],
+        "description": "Cross-category pivot — user abandons category mid-conversation",
+    },
+    {
+        "id": "q_027",
+        "query_type": "multi_turn",
+        "type": "multi_turn",
+        "expected_no_products_found": True,
+        "satisfiable": True,
+        "turns": [
+            {
+                "query": "I'm shopping for a gift — any good kids toys under $40?",
+                "expected_category": "kids_toys",
+                "hard_constraints": [
+                    {"field": "price", "op": "lte", "value": 40},
+                ],
+            },
+            {
+                "query": "Also I need outdoor furniture — a patio umbrella base that fits an 11-foot umbrella",
+            },
+        ],
+        "description": "Cross-category additive — multi-intent turn; tests single-category agent limit",
+    },
 ]

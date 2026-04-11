@@ -7,6 +7,8 @@ priority order:
   out_of_stock_presented   top result has in_stock=False
   constraint_violation     top result violates a hard constraint
   hallucination            any groundedness score < 0.5
+  citation_error           agent cited a wrong spec value in final_response
+                           (score < 0.5 from spec_citation evaluator)
   missing_spec_failure     hard constraint violation reason is spec_missing
   impossible_constraints   ranked_products==[] AND satisfiable=False on query
   catalog_gap              ranked_products==[] AND satisfiable=True on query
@@ -45,7 +47,12 @@ def classify_failure(result: dict) -> str:
     if any(a.get("score", 1.0) < 0.5 for a in annotations):
         return "hallucination"
 
-    # 4. missing_spec_failure
+    # 4. citation_error — agent cited a wrong value in final_response
+    citation = result.get("citation_accuracy")
+    if citation and citation.get("score") is not None and citation["score"] < 0.5:
+        return "citation_error"
+
+    # 5. missing_spec_failure
     missing_spec_violations = [
         v for v in violations
         if v.get("is_hard") and v.get("reason") == "spec_missing"
