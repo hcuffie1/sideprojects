@@ -438,4 +438,115 @@ CANONICAL_QUERIES = [
         ],
         "description": "Cross-category additive — multi-intent turn; tests single-category agent limit",
     },
+    {
+        "id": "q_028",
+        "query_type": "multi_turn",
+        "type": "multi_turn",
+        "turns": [
+            {
+                "query": "I need a patio umbrella base — my budget is strictly under $150",
+                "expected_category": "outdoor_furniture",
+                "hard_constraints": [
+                    {"field": "price", "op": "lte", "value": 150},
+                ],
+            },
+            {
+                "query": "What materials do most of these come in?",
+                "hard_constraints": [
+                    {"field": "price", "op": "lte", "value": 150},
+                ],
+            },
+            {
+                "query": "I'd prefer something in a dark color if possible",
+                "hard_constraints": [
+                    {"field": "price", "op": "lte", "value": 150},
+                ],
+            },
+            {
+                "query": "Oh wait, it also needs to hold at least a 13-foot umbrella",
+                "hard_constraints": [
+                    {"field": "price", "op": "lte", "value": 150},
+                    {"field": "max_umbrella_size_feet", "op": "gte", "value": 13},
+                ],
+            },
+            {
+                "query": "Great, show me what matches all of that",
+                "hard_constraints": [
+                    {"field": "price", "op": "lte", "value": 150},
+                    {"field": "max_umbrella_size_feet", "op": "gte", "value": 13},
+                ],
+            },
+        ],
+        "description": "Constraint persistence over distraction — price from T1 must survive 3 turns of soft questions before being checked",
+    },
+    {
+        "id": "q_029",
+        "query_type": "multi_turn",
+        "type": "multi_turn",
+        "turns": [
+            {
+                "query": "I'm looking for a patio umbrella base",
+                "expected_category": "outdoor_furniture",
+                # No hard constraints yet — user just expressed intent
+                "expected_constraints_snapshot": [],
+            },
+            {
+                "query": "It has to hold at least a 13-foot umbrella",
+                "expected_constraints_snapshot": [
+                    {"field": "max_umbrella_size_feet", "op": "gte", "value": 13},
+                ],
+            },
+            {
+                "query": "Actually while I'm here — I also need wireless headphones with long battery life",
+                "expected_category": "consumer_electronics",
+                # Category switches to CE; OF constraints should drop from parsed_constraints
+                "expected_constraints_snapshot": [],
+            },
+            {
+                "query": "The headphones need at least 25 hours battery",
+                "expected_constraints_snapshot": [
+                    {"field": "battery_life_hours", "op": "gte", "value": 25},
+                ],
+            },
+            {
+                "query": "Noise cancelling would be great too",
+                # Soft preference; CE hard constraint should persist
+                "expected_constraints_snapshot": [
+                    {"field": "battery_life_hours", "op": "gte", "value": 25},
+                ],
+            },
+            {
+                "query": "Okay, coming back to the umbrella base — what were you showing me?",
+                "expected_category": "outdoor_furniture",
+                # KEY TEST: agent returns to OF context and must restore T2 constraint
+                "expected_constraints_snapshot": [
+                    {"field": "max_umbrella_size_feet", "op": "gte", "value": 13},
+                ],
+            },
+            {
+                "query": "It also needs to be under 60 pounds",
+                "expected_constraints_snapshot": [
+                    {"field": "max_umbrella_size_feet", "op": "gte", "value": 13},
+                    {"field": "weight_lbs", "op": "lte", "value": 60},
+                ],
+            },
+            {
+                "query": "And I need the price under $250",
+                "expected_constraints_snapshot": [
+                    {"field": "max_umbrella_size_feet", "op": "gte", "value": 13},
+                    {"field": "weight_lbs", "op": "lte", "value": 60},
+                    {"field": "price", "op": "lte", "value": 250},
+                ],
+            },
+            {
+                "query": "Perfect — show me the best option that meets all my requirements",
+                "expected_constraints_snapshot": [
+                    {"field": "max_umbrella_size_feet", "op": "gte", "value": 13},
+                    {"field": "weight_lbs", "op": "lte", "value": 60},
+                    {"field": "price", "op": "lte", "value": 250},
+                ],
+            },
+        ],
+        "description": "Product A→B→A pivot — OF constraint from T2 must survive CE detour (T3-T5) and be restored at T6",
+    },
 ]

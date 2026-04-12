@@ -5,15 +5,16 @@ Detects when the agent drops a constraint that was established in an earlier
 turn. The IntentNode is instructed to accumulate constraints across turns, but
 this is prompt-driven — this module validates that it actually does so.
 
-Core concept:
-  After each turn, the *expected* constraint set is the union of all
-  hard_constraints from all turns up to and including the current one,
-  with later constraints superseding earlier ones on the same field
-  (e.g., "under 50 lbs" followed by "actually under 30 lbs" → ≤30).
+Two modes for specifying expected constraints per turn:
 
-  We then check whether each expected field appears in parsed_constraints.
-  Matching is on field name only (not value), since the LLM may extract
-  the value slightly differently across turns.
+  1. Cumulative (default) — each turn's `hard_constraints` are deltas that
+     accumulate. Later values on the same field supersede earlier ones.
+     Use for single-category conversations and intra-category constraint updates.
+
+  2. Snapshot — a turn with `expected_constraints_snapshot` defines the exact
+     set expected in parsed_constraints at that point, bypassing the cumulative
+     union. Use for cross-category conversations where the expected set resets
+     or restores depending on which category is currently in context.
 
 Usage:
     from evals.metrics.constraint_retention import (
@@ -28,12 +29,20 @@ def expected_constraints_at_turn(turns: list, up_to_index: int) -> list:
     """
     Return the expected constraint set after `up_to_index` turns (0-based).
 
-    Constraints on the same field are deduplicated by keeping the last
-    one seen — this correctly handles constraint updates like
-    "under 50 lbs" → "actually, under 30 lbs".
+    If the target turn has an `expected_constraints_snapshot` key, that exact
+    list is returned directly (snapshot mode).
 
-    Only turns with an explicit `hard_constraints` key contribute.
+    Otherwise, constraints from all turns up to and including the target are
+    unioned with last-value-wins per field (cumulative mode). This correctly
+    handles constraint updates like "under 50 lbs" → "actually, under 30 lbs".
     """
+    target_turn = turns[up_to_index]
+
+    # Snapshot mode — caller specified the exact expected set for this turn
+    if "expected_constraints_snapshot" in target_turn:
+        return target_turn["expected_constraints_snapshot"]
+
+    # Cumulative mode — union of all hard_constraints up to this turn
     seen: dict[str, dict] = {}  # field → latest constraint
     for turn in turns[: up_to_index + 1]:
         for c in turn.get("hard_constraints", []):
