@@ -90,12 +90,36 @@ def run_query_with_retention(
     print(f"\n  Ranked products: {len(state.get('ranked_products', []))}")
     print(f"  Final response:\n  {state.get('final_response', '')[:200]}")
 
+    # Log retention as a proper Score so it's visible/filterable in Langfuse
+    # (same pattern as groundedness score in run_evals.py)
+    get_client().score_current_trace(
+        name="retention_rate",
+        value=report["overall_retention_rate"],
+        comment="Fraction of expected constraint fields present in final parsed_constraints",
+    )
+    if report["any_forgetting"]:
+        get_client().score_current_trace(
+            name="needs_human_review",
+            value=1.0,
+            comment="Constraint forgetting detected in multi-turn conversation",
+        )
+
+    # Log per-turn breakdown in metadata for drill-down
+    per_turn_summary = [
+        {
+            "turn": t["turn_index"],
+            "retention_rate": t["retention_rate"],
+            "forgotten": t["forgotten_fields"],
+        }
+        for t in report["turns"]
+    ]
     get_client().update_current_span(
         output={"response": state.get("final_response", "")[:200]},
         metadata={
             "overall_retention_rate": report["overall_retention_rate"],
             "any_forgetting": report["any_forgetting"],
             "final_ranked": len(state.get("ranked_products", [])),
+            "per_turn_retention": per_turn_summary,
         },
     )
 

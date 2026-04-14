@@ -126,14 +126,24 @@ pytest evals/phase1/ -v
 # Full integration test suite
 pytest evals/phase2/ -v
 
-# Run evals interactively
-python scripts/run_evals.py                     # all 23 queries
+# Single-turn eval suite (27 queries)
+python scripts/run_evals.py                     # all queries
 python scripts/run_evals.py --mode dev          # single query (q_001), fast iteration
 python scripts/run_evals.py --mode sample       # first 3 single-turn queries
 python scripts/run_evals.py q_001 q_003         # specific query IDs
-python scripts/run_evals.py --version v1_prime  # tag for A/A' comparison in Langfuse
+python scripts/run_evals.py --version v2        # tag for A/A' comparison in Langfuse
+python scripts/run_evals.py --stability         # add variance report (N=3 per query)
 
-# Weekly report with drift detection
+# Multi-turn eval suite (11 queries: 5×2-turn, 4×3-turn, 1×5-turn, 1×9-turn)
+python scripts/run_multiturn_evals.py           # all multi-turn queries
+python scripts/run_multiturn_evals.py --query q_029   # single query (A→B→A pivot)
+python scripts/run_multiturn_evals.py --version v2    # tag for Langfuse
+
+# Stability / variance testing
+python scripts/stability_test.py q_001 --n 5          # 5 runs of one query
+python scripts/stability_test.py q_001 --n 5 --version v3_prompt_fields
+
+# Weekly report with drift detection and priority actions
 python scripts/weekly_report.py
 
 # Interactive chat
