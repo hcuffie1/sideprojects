@@ -1,0 +1,20 @@
+# Ranking configuration for champion/challenger A/B testing.
+#
+# champion: current production weights (baseline)
+# challenger: alternate weighting that prioritizes constraint satisfaction
+#             over spec completeness — hypothesis: higher constraint_sat_rate
+#             at the cost of some spec coverage diversity
+
+champion:
+  name: "baseline"
+  description: "Current ranking: spec completeness + soft constraint bonus"
+  weights:
+    spec_completeness: 1.0      # score += spec_count / 10 * weight
+    soft_constraint_bonus: 0.1  # score += weight per matched soft constraint field
+
+challenger:
+  name: "constraint_first"
+  description: "Higher soft constraint weight, lower spec completeness weight"
+  weights:
+    spec_completeness: 0.5
+    soft_constraint_bonus: 0.3

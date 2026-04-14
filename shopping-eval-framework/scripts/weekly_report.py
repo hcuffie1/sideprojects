@@ -132,11 +132,18 @@ def main():
         "top1_valid_rate": "top1_valid_rate",
         "constraint_satisfaction_rate": "constraint_satisfaction_rate",
         "avg_groundedness": "avg_groundedness",
+        "avg_citation_accuracy": "avg_citation_accuracy",
         "no_valid_results_rate": "no_valid_results_rate",
         "oos_rate_top1": "oos_rate_top1",
+        "avg_candidates_eliminated": "avg_candidates_eliminated  [pipeline]",
+        "avg_output_violations": "avg_output_violations      [guardrail, target=0]",
+        "avg_hit_rate_at_1": "avg_hit_rate_at_1          [ranking]",
+        "avg_precision_at_k": "avg_precision_at_k         [ranking]",
+        "avg_recall_at_k": "avg_recall_at_k            [ranking]",
+        "avg_ndcg_at_k": "avg_ndcg_at_k              [ranking]",
     }
     for key, label in metric_labels.items():
-        print(f"  {label:<34} {_fmt(metrics.get(key))}")
+        print(f"  {label:<46} {_fmt(metrics.get(key))}")
 
     print(f"\n{'─'*50}")
     print("FAILURE DISTRIBUTION")
@@ -168,6 +175,10 @@ def main():
     print(f"  {status_icon} Threshold {'met' if insights['pass'] else 'NOT met'}")
     top = insights.get("top_failure_mode") or "none"
     print(f"  Top failure mode: {top}")
+    avg_out_v = metrics.get("avg_output_violations")
+    if avg_out_v is not None and avg_out_v > 0:
+        print(f"  [GUARDRAIL FAILURE] avg_output_violations={avg_out_v:.3f} — "
+              "ranked output contains constraint violations (target: 0)")
     for rec in insights.get("recommendations", []):
         print(f"  → {rec}")
 

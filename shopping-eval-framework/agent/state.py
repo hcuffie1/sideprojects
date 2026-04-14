@@ -39,3 +39,9 @@ class AgentState(TypedDict):
     # Eval metadata (populated by eval framework, not agent)
     trace_id: Optional[str]
     eval_scores: Optional[Dict]
+
+    # Token usage accumulated across all LLM nodes {input_total, output_total}
+    _token_usage: Optional[Dict]
+
+    # Optional user ID for memory-aware sessions (wired in by chat UI or caller)
+    user_id: Optional[str]

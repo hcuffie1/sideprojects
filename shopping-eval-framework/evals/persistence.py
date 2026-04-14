@@ -52,7 +52,10 @@ CREATE TABLE IF NOT EXISTS traces (
     output_violations           INTEGER,
     constraint_violations_json  TEXT,
     metrics_json                TEXT,
-    langfuse_trace_id           TEXT
+    langfuse_trace_id           TEXT,
+    tokens_input                INTEGER,
+    tokens_output               INTEGER,
+    latency_ms                  REAL
 )
 """
 
@@ -63,6 +66,9 @@ _MIGRATION_COLUMNS = [
     ("candidates_eliminated", "INTEGER"),
     ("output_violations", "INTEGER"),
     ("langfuse_trace_id", "TEXT"),
+    ("tokens_input", "INTEGER"),
+    ("tokens_output", "INTEGER"),
+    ("latency_ms", "REAL"),
 ]
 
 def init_db(db_path: str = DB_PATH) -> None:
@@ -163,6 +169,9 @@ def save_result(result: dict, run_id: str, db_path: str = DB_PATH) -> None:
             ),
             "agent_rationale": result.get("agent_rationale"),
         }),
+        "tokens_input": (result.get("_token_usage") or {}).get("input_total"),
+        "tokens_output": (result.get("_token_usage") or {}).get("output_total"),
+        "latency_ms": result.get("_latency_ms"),
     }
 
     with sqlite3.connect(db_path) as conn:
@@ -173,13 +182,15 @@ def save_result(result: dict, run_id: str, db_path: str = DB_PATH) -> None:
                 category_detected, failure_mode, num_ranked,
                 top1_in_stock, top1_valid, avg_groundedness,
                 candidates_eliminated, output_violations,
-                constraint_violations_json, langfuse_trace_id, metrics_json
+                constraint_violations_json, langfuse_trace_id, metrics_json,
+                tokens_input, tokens_output, latency_ms
             ) VALUES (
                 :run_id, :query_id, :query_text, :query_type, :timestamp,
                 :category_detected, :failure_mode, :num_ranked,
                 :top1_in_stock, :top1_valid, :avg_groundedness,
                 :candidates_eliminated, :output_violations,
-                :constraint_violations_json, :langfuse_trace_id, :metrics_json
+                :constraint_violations_json, :langfuse_trace_id, :metrics_json,
+                :tokens_input, :tokens_output, :latency_ms
             )
             """,
             row,

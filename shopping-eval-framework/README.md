@@ -32,6 +32,17 @@ ResponseNode        → only recommends products with groundedness score > 0.5
 
 Supports both single-turn and multi-turn (stateful conversation) queries.
 
+### User memory
+
+`agent/memory.py` provides a SQLite-backed `MemoryManager` for returning-user simulation:
+
+- **Explicit preferences** — user directly stated (`"I prefer minimalist design"`)
+- **Implicit preferences** — agent inferred from behavior (bought neutral-toned item → inferred palette), lower confidence weight
+- **Purchase history** — `should_avoid(user_id, product_id)` returns `True` if bought in the last 90 days, suppressing re-recommendations
+- Seeded with 2 demo users (Alex / Jordan) on first init; wired into `IntentNode` via `user_id` state field
+
+The Streamlit chat UI exposes this as a collapsible **Memory Context** panel in the sidebar, showing preferences (🔵 explicit / ⚪ implicit) and recent purchases before the user types their first query.
+
 ---
 
 ## Evaluation layers
@@ -146,7 +157,21 @@ python scripts/stability_test.py q_001 --n 5 --version v3_prompt_fields
 # Weekly report with drift detection and priority actions
 python scripts/weekly_report.py
 
-# Interactive chat
+# Champion / challenger A/B comparison
+python scripts/run_ab_comparison.py             # 5-query sample, parallel
+python scripts/run_ab_comparison.py --full      # all 27 single-turn queries
+python scripts/run_ab_comparison.py --sample 10 # custom sample size
+# → saves docs/ab_comparison.md
+
+# Visualizations (for demo / interview)
+python scripts/viz_failure_taxonomy.py          # → docs/charts/failure_taxonomy.png
+python scripts/viz_metric_movement.py           # → docs/charts/metric_movement.png
+python scripts/viz_metric_movement.py --source sqlite  # force local DB, skip Langfuse
+
+# Streamlit chat UI (new vs. returning user demo)
+streamlit run scripts/chat_ui.py
+
+# Interactive CLI chat
 python scripts/chat.py
 
 # Prompt management
@@ -221,16 +246,16 @@ Conclusion: [confirmed / refuted / partially confirmed]
 
 ---
 
-## Canonical query suite (23 queries)
+## Canonical query suite (29 queries)
 
 Covers 5 query types designed to stress-test specific failure modes:
 
 | Type | Count | Tests for |
 |---|---|---|
-| `single_turn` | ~12 | Basic constraint satisfaction, OOS filtering |
-| `multi_turn` | ~4 | Constraint accumulation across conversation turns |
-| `edge_case` | ~4 | Missing specs, off-by-one constraints, cold-start products |
-| `out_of_stock` | ~2 | Correct OOS handling when all candidates are unavailable |
+| `single_turn` | ~18 | Basic constraint satisfaction, OOS filtering, spec citation |
+| `multi_turn` | ~6 | Constraint accumulation, pivot handling, cross-category retention (q_024–q_029) |
+| `edge_case` | ~3 | Missing specs, off-by-one constraints, cold-start products |
+| `out_of_stock` | ~1 | Correct OOS handling when all candidates are unavailable |
 | `adversarial` | ~1 | Vague descriptions that tempt fabrication |
 
 ---
@@ -256,8 +281,15 @@ The mock catalog deliberately includes:
 | `top1_valid_rate` | Top result is in-stock and satisfies all hard constraints | ≥ 0.80 |
 | `constraint_satisfaction_rate` | % ranked products with no hard constraint violations | ≥ 0.85 |
 | `avg_groundedness` | Average LLM groundedness score across ranked products | ≥ 0.70 |
+| `avg_citation_accuracy` | % of spec values cited in `final_response` that match `product.specs` | ≥ 0.80 |
 | `no_valid_results_rate` | % queries returning zero valid results | ≤ 0.10 |
 | `oos_rate_top1` | % queries where top result is out of stock | ≤ 0.05 |
+| `avg_candidates_eliminated` | Avg products filtered by ConstraintCheckNode per query — pipeline throughput | higher = guardrails working |
+| `avg_output_violations` | Avg hard constraint violations in final ranked output — guardrail metric | 0 (any > 0 = guardrail failure) |
+| `avg_hit_rate_at_1` | Top-1 result is relevant (passes hard constraints + groundedness ≥ 0.5) | ≥ 0.70 |
+| `avg_precision_at_k` | Fraction of top-K results that are relevant | ≥ 0.60 |
+| `avg_recall_at_k` | Fraction of all relevant products captured in top-K | ≥ 0.70 |
+| `avg_ndcg_at_k` | Normalized Discounted Cumulative Gain — ranking quality, binary relevance | ≥ 0.70 |
 
 ---
 
@@ -269,7 +301,7 @@ This suite is intentionally scoped to offline accuracy. Known gaps:
 |---|---|---|
 | Spec citation accuracy (right product, wrong spec value cited) | Per-claim fact extraction + verification against `product.specs` | **Implemented** — `evals/metrics/spec_citation.py`; `citation_error` failure mode; `avg_citation_accuracy` in suite metrics |
 | Multi-turn constraint forgetting | Cross-turn constraint accumulation assertions; canonical multi-turn query set | **Implemented** — `evals/metrics/constraint_retention.py`; `scripts/run_multiturn_evals.py`; q_024–q_027 test constraint updates and cross-category pivots |
-| Query cost and latency | Token counting + wall-clock timing per node via LLM usage metadata | Medium — required for production readiness argument |
+| Query cost and latency | Token counting + wall-clock timing per query | **Implemented** — `usage_metadata` from Gemini responses; `evals/pricing.py`; logged to SQLite + Langfuse span metadata |
 | Response quality beyond groundedness (helpfulness, tone, verbosity) | LLM-as-judge rubric on `final_response` | Low — subjective; groundedness is a stronger signal for this domain |
 | Run-over-run variance (LLM non-determinism) | N=3+ repeated runs, per-metric std dev | **Implemented** — `evals/metrics/stability.py`, `scripts/stability_test.py` |
 | Live user signal (clicks, purchases, returns) | Online eval infrastructure, attribution window | Out of scope for offline eval suite |

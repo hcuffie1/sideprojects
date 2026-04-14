@@ -3,9 +3,12 @@ name: Eval Suite
 on:
   pull_request:
   schedule:
-    - cron: '0 8 * * 1'  # Weekly, Monday 8am UTC
+    - cron: '0 8 * * 1'  # Weekly, Monday 8am UTC — disable after 2026-04-30
 
 jobs:
+
+  # ── PR: fast logic tests, no API key required ─────────────────────────────
+
   phase1-fast:
     name: Phase 1 — Logic Tests (no API key)
     runs-on: ubuntu-latest
@@ -25,12 +28,39 @@ jobs:
                  evals/phase1/test_ranking.py \
                  -v --tb=short
 
-  phase2-nightly:
-    name: Phase 2 — Full Integration Suite
+  # ── Weekly: date gate — skip after 2026-04-30 ─────────────────────────────
+
+  check-schedule-date:
+    name: Check weekly schedule end date
     runs-on: ubuntu-latest
     if: github.event_name == 'schedule'
+    outputs:
+      should_run: ${{ steps.date_check.outputs.should_run }}
+    steps:
+      - name: Check if within active window
+        id: date_check
+        run: |
+          TODAY=$(date -u +%Y-%m-%d)
+          END_DATE="2026-04-30"
+          if [[ "$TODAY" > "$END_DATE" ]]; then
+            echo "Weekly eval suite expired (today=$TODAY, end=$END_DATE). Skipping."
+            echo "should_run=false" >> $GITHUB_OUTPUT
+          else
+            echo "should_run=true" >> $GITHUB_OUTPUT
+          fi
+
+  # ── Weekly: full eval suite with Langfuse logging ─────────────────────────
+
+  weekly-eval-suite:
+    name: Weekly — Full Eval Suite
+    runs-on: ubuntu-latest
+    needs: check-schedule-date
+    if: needs.check-schedule-date.outputs.should_run == 'true'
     env:
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      LANGFUSE_PUBLIC_KEY: ${{ secrets.LANGFUSE_PUBLIC_KEY }}
+      LANGFUSE_SECRET_KEY: ${{ secrets.LANGFUSE_SECRET_KEY }}
+      LANGFUSE_HOST: https://cloud.langfuse.com
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -39,6 +69,14 @@ jobs:
       - name: Install dependencies
         working-directory: shopping-eval-framework
         run: pip install -r requirements.txt
-      - name: Run full eval suite
+      - name: Run Phase 1 unit tests
         working-directory: shopping-eval-framework
-        run: pytest evals/ -v --tb=short
+        run: pytest evals/phase1/ -v --tb=short
+      - name: Run full eval suite (tagged for Langfuse)
+        working-directory: shopping-eval-framework
+        run: |
+          python scripts/run_evals.py --version weekly_$(date -u +%Y%m%d)
+      - name: Run multi-turn eval suite (tagged for Langfuse)
+        working-directory: shopping-eval-framework
+        run: |
+          python scripts/run_multiturn_evals.py --version weekly_$(date -u +%Y%m%d)

@@ -60,6 +60,14 @@ def response_node(state: dict) -> dict:
 
     response = llm.invoke(messages)
 
+    # Accumulate token usage
+    usage = getattr(response, "usage_metadata", None) or {}
+    prior = state.get("_token_usage") or {"input_total": 0, "output_total": 0}
+    token_usage = {
+        "input_total": prior["input_total"] + (usage.get("input_tokens") or 0),
+        "output_total": prior["output_total"] + (usage.get("output_tokens") or 0),
+    }
+
     updated_history = state.get("conversation_history", []) + [
         {"role": "user", "content": query},
         {"role": "assistant", "content": response.content}
@@ -71,5 +79,6 @@ def response_node(state: dict) -> dict:
         "agent_rationale": (
             f"Recommended {len(trustworthy)} grounded products "
             f"from {len(ranked)} ranked results"
-        )
+        ),
+        "_token_usage": token_usage,
     }

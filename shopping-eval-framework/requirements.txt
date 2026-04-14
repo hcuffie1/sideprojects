@@ -9,3 +9,6 @@ pytest-asyncio
 python-dotenv
 sentence-transformers
 numpy
+matplotlib
+pyyaml
+streamlit

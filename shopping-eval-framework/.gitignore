@@ -4,3 +4,4 @@ __pycache__/
 .pytest_cache/
 evals/utils/.cache.json
 .eval_results/
+agent/memory.db
