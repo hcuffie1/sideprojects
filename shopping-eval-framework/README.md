@@ -146,7 +146,21 @@ python scripts/stability_test.py q_001 --n 5 --version v3_prompt_fields
 # Weekly report with drift detection and priority actions
 python scripts/weekly_report.py
 
-# Interactive chat
+# Champion / challenger A/B comparison
+python scripts/run_ab_comparison.py             # 5-query sample, parallel
+python scripts/run_ab_comparison.py --full      # all 27 single-turn queries
+python scripts/run_ab_comparison.py --sample 10 # custom sample size
+# → saves docs/ab_comparison.md
+
+# Visualizations (for demo / interview)
+python scripts/viz_failure_taxonomy.py          # → docs/charts/failure_taxonomy.png
+python scripts/viz_metric_movement.py           # → docs/charts/metric_movement.png
+python scripts/viz_metric_movement.py --source sqlite  # force local DB, skip Langfuse
+
+# Streamlit chat UI (new vs. returning user demo)
+streamlit run scripts/chat_ui.py
+
+# Interactive CLI chat
 python scripts/chat.py
 
 # Prompt management
@@ -256,8 +270,11 @@ The mock catalog deliberately includes:
 | `top1_valid_rate` | Top result is in-stock and satisfies all hard constraints | ≥ 0.80 |
 | `constraint_satisfaction_rate` | % ranked products with no hard constraint violations | ≥ 0.85 |
 | `avg_groundedness` | Average LLM groundedness score across ranked products | ≥ 0.70 |
+| `avg_citation_accuracy` | % of spec values cited in `final_response` that match `product.specs` | ≥ 0.80 |
 | `no_valid_results_rate` | % queries returning zero valid results | ≤ 0.10 |
 | `oos_rate_top1` | % queries where top result is out of stock | ≤ 0.05 |
+| `avg_candidates_eliminated` | Avg products filtered by ConstraintCheckNode per query — pipeline throughput | higher = guardrails working |
+| `avg_output_violations` | Avg hard constraint violations in final ranked output — guardrail metric | 0 (any > 0 = guardrail failure) |
 
 ---
 
@@ -269,7 +286,7 @@ This suite is intentionally scoped to offline accuracy. Known gaps:
 |---|---|---|
 | Spec citation accuracy (right product, wrong spec value cited) | Per-claim fact extraction + verification against `product.specs` | **Implemented** — `evals/metrics/spec_citation.py`; `citation_error` failure mode; `avg_citation_accuracy` in suite metrics |
 | Multi-turn constraint forgetting | Cross-turn constraint accumulation assertions; canonical multi-turn query set | **Implemented** — `evals/metrics/constraint_retention.py`; `scripts/run_multiturn_evals.py`; q_024–q_027 test constraint updates and cross-category pivots |
-| Query cost and latency | Token counting + wall-clock timing per node via LLM usage metadata | Medium — required for production readiness argument |
+| Query cost and latency | Token counting + wall-clock timing per query | **Implemented** — `usage_metadata` from Gemini responses; `evals/pricing.py`; logged to SQLite + Langfuse span metadata |
 | Response quality beyond groundedness (helpfulness, tone, verbosity) | LLM-as-judge rubric on `final_response` | Low — subjective; groundedness is a stronger signal for this domain |
 | Run-over-run variance (LLM non-determinism) | N=3+ repeated runs, per-metric std dev | **Implemented** — `evals/metrics/stability.py`, `scripts/stability_test.py` |
 | Live user signal (clicks, purchases, returns) | Online eval infrastructure, attribution window | Out of scope for offline eval suite |

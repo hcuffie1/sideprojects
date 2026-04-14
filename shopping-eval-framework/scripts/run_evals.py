@@ -13,6 +13,7 @@ import sys
 import os
 import argparse
 import uuid
+import time
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
@@ -32,6 +33,7 @@ from evals.persistence import init_db, save_result  # noqa: E402
 from evals.metrics.stability import (  # noqa: E402
     run_stability_test, print_stability_report
 )
+from evals.pricing import cost_for_tokens  # noqa: E402
 
 EMPTY_STATE = {
     "conversation_history": [],
@@ -90,6 +92,8 @@ def _log_scores(result: dict) -> None:
     constraint_sat = 1.0 - (out_v / len(ranked)) if ranked else 1.0
     top1 = _top1_valid(result)
 
+    candidates_eliminated = len(result.get("constraint_violations", []))
+
     for name, value, comment in [
         ("groundedness", avg_g,
          "Average groundedness score across ranked products"),
@@ -99,6 +103,8 @@ def _log_scores(result: dict) -> None:
          "Binary: top result valid (in stock, no violations)"),
         ("output_violations", float(out_v),
          "Guardrail failures in final ranked output (target: 0)"),
+        ("candidates_eliminated", float(candidates_eliminated),
+         "Products filtered by constraint_check_node (pipeline throughput)"),
     ]:
         get_client().score_current_trace(
             name=name, value=value, comment=comment
@@ -136,7 +142,10 @@ def run_single_query(
     print(f"Query: {query_spec['query']}")
     print("-" * 60)
 
+    t0 = time.perf_counter()
     result = agent.invoke({**EMPTY_STATE, "query": query_spec["query"]})
+    latency_ms = (time.perf_counter() - t0) * 1000
+    result["_latency_ms"] = latency_ms
 
     print(f"Category detected: {result.get('category')}")
     print(
@@ -157,12 +166,19 @@ def run_single_query(
 
     result["query_spec"] = query_spec
     _log_scores(result)
+    token_usage = result.get("_token_usage") or {}
+    in_tok = token_usage.get("input_total", 0)
+    out_tok = token_usage.get("output_total", 0)
     get_client().update_current_span(
         output={"response": result.get("final_response", "")[:200]},
         metadata={
             "failure_mode": classify_failure(result),
             "products_ranked": len(result.get("ranked_products", [])),
             "output_violations": _compute_output_violations(result),
+            "tokens_input": in_tok,
+            "tokens_output": out_tok,
+            "latency_ms": round(latency_ms, 1),
+            "cost_usd": round(cost_for_tokens(in_tok, out_tok), 6),
         },
     )
     result["_langfuse_trace_id"] = get_client().get_current_trace_id()
@@ -194,6 +210,7 @@ def run_multiturn_query(
     )
     print("-" * 60)
 
+    t0 = time.perf_counter()
     state = {**EMPTY_STATE}
     for i, turn in enumerate(turns, 1):
         print(f"\n  Turn {i}: {turn['query']}")
@@ -204,16 +221,25 @@ def run_multiturn_query(
             f"  Constraints: {len(state.get('parsed_constraints', []))}"
         )
         print(f"  Ranked: {len(state.get('ranked_products', []))}")
+    latency_ms = (time.perf_counter() - t0) * 1000
+    state["_latency_ms"] = latency_ms
 
     print(f"\nFinal response:\n{state.get('final_response')}")
     state["query_spec"] = query_spec
     _log_scores(state)
+    token_usage = state.get("_token_usage") or {}
+    in_tok = token_usage.get("input_total", 0)
+    out_tok = token_usage.get("output_total", 0)
     get_client().update_current_span(
         output={"response": state.get("final_response", "")[:200]},
         metadata={
             "failure_mode": classify_failure(state),
             "products_ranked": len(state.get("ranked_products", [])),
             "output_violations": _compute_output_violations(state),
+            "tokens_input": in_tok,
+            "tokens_output": out_tok,
+            "latency_ms": round(latency_ms, 1),
+            "cost_usd": round(cost_for_tokens(in_tok, out_tok), 6),
         },
     )
     state["_langfuse_trace_id"] = get_client().get_current_trace_id()

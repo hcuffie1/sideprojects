@@ -15,6 +15,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
 from agent.nodes.constraint_check_node import check_constraint  # noqa: E402
 from evals.metrics.spec_citation import citation_accuracy  # noqa: E402
+from evals.metrics.ranking_metrics import compute_ranking_metrics  # noqa: E402
 
 
 def _passes_hard_constraints(product: dict, constraints: list) -> bool:
@@ -50,8 +51,15 @@ def compute_metrics(results: list) -> dict:
             "top1_valid_rate": None,
             "constraint_satisfaction_rate": None,
             "avg_groundedness": None,
+            "avg_citation_accuracy": None,
             "no_valid_results_rate": None,
             "oos_rate_top1": None,
+            "avg_candidates_eliminated": None,
+            "avg_output_violations": None,
+            "avg_hit_rate_at_1": None,
+            "avg_precision_at_k": None,
+            "avg_recall_at_k": None,
+            "avg_ndcg_at_k": None,
             "n": 0,
         }
 
@@ -62,6 +70,8 @@ def compute_metrics(results: list) -> dict:
     citation_scores = []
     no_results_count = 0
     oos_top1_count = 0
+    candidates_eliminated_counts = []
+    output_violations_counts = []
 
     for result in results:
         ranked = result.get("ranked_products", [])
@@ -69,12 +79,25 @@ def compute_metrics(results: list) -> dict:
         query_spec = result.get("query_spec", {})
         hard_constraints = query_spec.get("hard_constraints", [])
 
+        # candidates_eliminated — pipeline throughput (computed before early-exit)
+        candidates_eliminated_counts.append(
+            len(result.get("constraint_violations", []))
+        )
+
         # no_valid_results_rate
         if not ranked:
             no_results_count += 1
             continue
 
         top1 = ranked[0]
+
+        # output_violations — guardrail metric (should always be 0)
+        hard = [c for c in hard_constraints if c.get("is_hard", True)]
+        out_v = sum(
+            1 for p in ranked
+            if any(not check_constraint(p, c)[0] for c in hard)
+        )
+        output_violations_counts.append(out_v)
 
         # oos_rate_top1
         if not top1.get("in_stock"):
@@ -132,5 +155,14 @@ def compute_metrics(results: list) -> dict:
         "oos_rate_top1": (
             oos_top1_count / runs_with_results if runs_with_results else None
         ),
+        "avg_candidates_eliminated": (
+            sum(candidates_eliminated_counts) / len(candidates_eliminated_counts)
+            if candidates_eliminated_counts else None
+        ),
+        "avg_output_violations": (
+            sum(output_violations_counts) / len(output_violations_counts)
+            if output_violations_counts else None
+        ),
+        **compute_ranking_metrics(results),
         "n": n,
     }
