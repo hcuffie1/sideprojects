@@ -126,14 +126,24 @@ pytest evals/phase1/ -v
 # Full integration test suite
 pytest evals/phase2/ -v
 
-# Run evals interactively
-python scripts/run_evals.py                     # all 23 queries
+# Single-turn eval suite (27 queries)
+python scripts/run_evals.py                     # all queries
 python scripts/run_evals.py --mode dev          # single query (q_001), fast iteration
 python scripts/run_evals.py --mode sample       # first 3 single-turn queries
 python scripts/run_evals.py q_001 q_003         # specific query IDs
-python scripts/run_evals.py --version v1_prime  # tag for A/A' comparison in Langfuse
+python scripts/run_evals.py --version v2        # tag for A/A' comparison in Langfuse
+python scripts/run_evals.py --stability         # add variance report (N=3 per query)
 
-# Weekly report with drift detection
+# Multi-turn eval suite (11 queries: 5×2-turn, 4×3-turn, 1×5-turn, 1×9-turn)
+python scripts/run_multiturn_evals.py           # all multi-turn queries
+python scripts/run_multiturn_evals.py --query q_029   # single query (A→B→A pivot)
+python scripts/run_multiturn_evals.py --version v2    # tag for Langfuse
+
+# Stability / variance testing
+python scripts/stability_test.py q_001 --n 5          # 5 runs of one query
+python scripts/stability_test.py q_001 --n 5 --version v3_prompt_fields
+
+# Weekly report with drift detection and priority actions
 python scripts/weekly_report.py
 
 # Interactive chat
@@ -257,8 +267,8 @@ This suite is intentionally scoped to offline accuracy. Known gaps:
 
 | Gap | What it would require | Status |
 |---|---|---|
-| Spec citation accuracy (right product, wrong spec value cited) | Per-claim fact extraction + verification against `product.specs` | **Next priority** — trust-critical for shopping; groundedness detects hallucination at product level but not value level |
-| Multi-turn constraint forgetting | Cross-turn constraint accumulation assertions; canonical multi-turn query set | **Next priority** — all canonical queries are single-turn; real shopping conversations are not |
+| Spec citation accuracy (right product, wrong spec value cited) | Per-claim fact extraction + verification against `product.specs` | **Implemented** — `evals/metrics/spec_citation.py`; `citation_error` failure mode; `avg_citation_accuracy` in suite metrics |
+| Multi-turn constraint forgetting | Cross-turn constraint accumulation assertions; canonical multi-turn query set | **Implemented** — `evals/metrics/constraint_retention.py`; `scripts/run_multiturn_evals.py`; q_024–q_027 test constraint updates and cross-category pivots |
 | Query cost and latency | Token counting + wall-clock timing per node via LLM usage metadata | Medium — required for production readiness argument |
 | Response quality beyond groundedness (helpfulness, tone, verbosity) | LLM-as-judge rubric on `final_response` | Low — subjective; groundedness is a stronger signal for this domain |
 | Run-over-run variance (LLM non-determinism) | N=3+ repeated runs, per-metric std dev | **Implemented** — `evals/metrics/stability.py`, `scripts/stability_test.py` |
