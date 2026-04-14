@@ -32,6 +32,17 @@ ResponseNode        → only recommends products with groundedness score > 0.5
 
 Supports both single-turn and multi-turn (stateful conversation) queries.
 
+### User memory
+
+`agent/memory.py` provides a SQLite-backed `MemoryManager` for returning-user simulation:
+
+- **Explicit preferences** — user directly stated (`"I prefer minimalist design"`)
+- **Implicit preferences** — agent inferred from behavior (bought neutral-toned item → inferred palette), lower confidence weight
+- **Purchase history** — `should_avoid(user_id, product_id)` returns `True` if bought in the last 90 days, suppressing re-recommendations
+- Seeded with 2 demo users (Alex / Jordan) on first init; wired into `IntentNode` via `user_id` state field
+
+The Streamlit chat UI exposes this as a collapsible **Memory Context** panel in the sidebar, showing preferences (🔵 explicit / ⚪ implicit) and recent purchases before the user types their first query.
+
 ---
 
 ## Evaluation layers
@@ -235,16 +246,16 @@ Conclusion: [confirmed / refuted / partially confirmed]
 
 ---
 
-## Canonical query suite (23 queries)
+## Canonical query suite (29 queries)
 
 Covers 5 query types designed to stress-test specific failure modes:
 
 | Type | Count | Tests for |
 |---|---|---|
-| `single_turn` | ~12 | Basic constraint satisfaction, OOS filtering |
-| `multi_turn` | ~4 | Constraint accumulation across conversation turns |
-| `edge_case` | ~4 | Missing specs, off-by-one constraints, cold-start products |
-| `out_of_stock` | ~2 | Correct OOS handling when all candidates are unavailable |
+| `single_turn` | ~18 | Basic constraint satisfaction, OOS filtering, spec citation |
+| `multi_turn` | ~6 | Constraint accumulation, pivot handling, cross-category retention (q_024–q_029) |
+| `edge_case` | ~3 | Missing specs, off-by-one constraints, cold-start products |
+| `out_of_stock` | ~1 | Correct OOS handling when all candidates are unavailable |
 | `adversarial` | ~1 | Vague descriptions that tempt fabrication |
 
 ---
@@ -275,6 +286,10 @@ The mock catalog deliberately includes:
 | `oos_rate_top1` | % queries where top result is out of stock | ≤ 0.05 |
 | `avg_candidates_eliminated` | Avg products filtered by ConstraintCheckNode per query — pipeline throughput | higher = guardrails working |
 | `avg_output_violations` | Avg hard constraint violations in final ranked output — guardrail metric | 0 (any > 0 = guardrail failure) |
+| `avg_hit_rate_at_1` | Top-1 result is relevant (passes hard constraints + groundedness ≥ 0.5) | ≥ 0.70 |
+| `avg_precision_at_k` | Fraction of top-K results that are relevant | ≥ 0.60 |
+| `avg_recall_at_k` | Fraction of all relevant products captured in top-K | ≥ 0.70 |
+| `avg_ndcg_at_k` | Normalized Discounted Cumulative Gain — ranking quality, binary relevance | ≥ 0.70 |
 
 ---
 
