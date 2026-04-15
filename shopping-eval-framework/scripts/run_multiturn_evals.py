@@ -92,36 +92,39 @@ def run_query_with_retention(
 
     # Log retention as a proper Score so it's visible/filterable in Langfuse
     # (same pattern as groundedness score in run_evals.py)
-    get_client().score_current_trace(
-        name="retention_rate",
-        value=report["overall_retention_rate"],
-        comment="Fraction of expected constraint fields present in final parsed_constraints",
-    )
-    if report["any_forgetting"]:
+    try:
         get_client().score_current_trace(
-            name="needs_human_review",
-            value=1.0,
-            comment="Constraint forgetting detected in multi-turn conversation",
+            name="retention_rate",
+            value=report["overall_retention_rate"],
+            comment="Fraction of expected constraint fields present in final parsed_constraints",
         )
+        if report["any_forgetting"]:
+            get_client().score_current_trace(
+                name="needs_human_review",
+                value=1.0,
+                comment="Constraint forgetting detected in multi-turn conversation",
+            )
 
-    # Log per-turn breakdown in metadata for drill-down
-    per_turn_summary = [
-        {
-            "turn": t["turn_index"],
-            "retention_rate": t["retention_rate"],
-            "forgotten": t["forgotten_fields"],
-        }
-        for t in report["turns"]
-    ]
-    get_client().update_current_span(
-        output={"response": state.get("final_response", "")[:200]},
-        metadata={
-            "overall_retention_rate": report["overall_retention_rate"],
-            "any_forgetting": report["any_forgetting"],
-            "final_ranked": len(state.get("ranked_products", [])),
-            "per_turn_retention": per_turn_summary,
-        },
-    )
+        # Log per-turn breakdown in metadata for drill-down
+        per_turn_summary = [
+            {
+                "turn": t["turn_index"],
+                "retention_rate": t["retention_rate"],
+                "forgotten": t["forgotten_fields"],
+            }
+            for t in report["turns"]
+        ]
+        get_client().update_current_span(
+            output={"response": state.get("final_response", "")[:200]},
+            metadata={
+                "overall_retention_rate": report["overall_retention_rate"],
+                "any_forgetting": report["any_forgetting"],
+                "final_ranked": len(state.get("ranked_products", [])),
+                "per_turn_retention": per_turn_summary,
+            },
+        )
+    except Exception as e:
+        print(f"  [Langfuse logging skipped: {e}]")
 
     return {**state, "query_spec": query_spec, "retention_report": report}
 
@@ -172,8 +175,14 @@ def main():
     run_id = str(uuid.uuid4())[:8]
     results = []
     for query_spec in multiturn:
-        result = run_query_with_retention(query_spec, run_id=run_id, version=args.version)
-        results.append(result)
+        try:
+            result = run_query_with_retention(
+                query_spec, run_id=run_id, version=args.version
+            )
+            if result is not None:
+                results.append(result)
+        except Exception as e:
+            print(f"  ERROR on {query_spec['id']}: {e}")
 
     print_retention_summary(results)
 
