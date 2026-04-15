@@ -9,6 +9,7 @@ Usage:
 import sys
 import os
 import argparse
+import time
 import uuid
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
@@ -174,6 +175,7 @@ def main():
 
     run_id = str(uuid.uuid4())[:8]
     results = []
+    t_suite_start = time.perf_counter()
     for query_spec in multiturn:
         try:
             result = run_query_with_retention(
@@ -185,6 +187,8 @@ def main():
             print(f"  ERROR on {query_spec['id']}: {e}")
 
     print_retention_summary(results)
+    elapsed = time.perf_counter() - t_suite_start
+    print(f"  Total elapsed: {elapsed:.1f}s ({len(results)} queries)")
 
 
 if __name__ == "__main__":

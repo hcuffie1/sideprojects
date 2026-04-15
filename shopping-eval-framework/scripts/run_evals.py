@@ -338,6 +338,7 @@ if __name__ == "__main__":
 
     queries = select_queries(args.mode, args.query_ids)
     results = []
+    t_suite_start = time.perf_counter()
 
     for q in queries:
         try:
@@ -362,4 +363,6 @@ if __name__ == "__main__":
                 f"  Langfuse traces tagged: version={args.version}, "
                 f"run_id={run_id}"
             )
+        elapsed = time.perf_counter() - t_suite_start
+        print(f"  Total elapsed: {elapsed:.1f}s ({len(results)} queries)")
         get_client().flush()
