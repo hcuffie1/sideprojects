@@ -12,6 +12,29 @@ import argparse
 import time
 import uuid
 
+_MAX_RETRIES = 3
+_RETRY_DELAYS = [2, 4]  # seconds between attempts 1→2, 2→3
+
+
+def _invoke_with_retry(state: dict, label: str) -> dict:
+    """Invoke the agent with up to _MAX_RETRIES attempts on transient errors."""
+    last_exc = None
+    for attempt in range(1, _MAX_RETRIES + 1):
+        try:
+            return agent.invoke(state)
+        except Exception as e:
+            last_exc = e
+            is_transient = "503" in str(e) or "UNAVAILABLE" in str(e)
+            if is_transient and attempt < _MAX_RETRIES:
+                delay = _RETRY_DELAYS[attempt - 1]
+                print(
+                    f"  [retry {attempt}/{_MAX_RETRIES - 1}] "
+                    f"{label}: transient error, retrying in {delay}s — {e}"
+                )
+                time.sleep(delay)
+            else:
+                raise last_exc from None
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from dotenv import load_dotenv
@@ -70,7 +93,7 @@ def run_query_with_retention(
     for i, turn in enumerate(turns, 1):
         print(f"\n  Turn {i}: {turn['query']}")
         state = {**state, "query": turn["query"]}
-        state = agent.invoke(state)
+        state = _invoke_with_retry(state, f"{query_spec['id']} T{i}")
 
         expected = expected_constraints_at_turn(turns, i - 1)
         parsed = state.get("parsed_constraints", [])
