@@ -29,6 +29,7 @@ def get_langfuse_api_client():
         from langfuse.api import LangfuseAPI
         return LangfuseAPI(
             base_url=os.getenv("LANGFUSE_HOST", "https://cloud.langfuse.com"),
+            x_langfuse_public_key=public_key,
             username=public_key,
             password=secret_key,
         )
