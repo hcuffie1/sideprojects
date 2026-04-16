@@ -15,6 +15,29 @@ import argparse
 import uuid
 import time
 
+_MAX_RETRIES = 3
+_RETRY_DELAYS = [2, 4]  # seconds between attempts 1→2, 2→3
+
+
+def _invoke_with_retry(state: dict, query_id: str) -> dict:
+    """Invoke the agent with up to _MAX_RETRIES attempts on transient errors."""
+    last_exc = None
+    for attempt in range(1, _MAX_RETRIES + 1):
+        try:
+            return agent.invoke(state)
+        except Exception as e:
+            last_exc = e
+            is_transient = "503" in str(e) or "UNAVAILABLE" in str(e)
+            if is_transient and attempt < _MAX_RETRIES:
+                delay = _RETRY_DELAYS[attempt - 1]
+                print(
+                    f"  [retry {attempt}/{_MAX_RETRIES - 1}] "
+                    f"{query_id}: transient error, retrying in {delay}s — {e}"
+                )
+                time.sleep(delay)
+            else:
+                raise last_exc from None
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from dotenv import load_dotenv
@@ -143,7 +166,9 @@ def run_single_query(
     print("-" * 60)
 
     t0 = time.perf_counter()
-    result = agent.invoke({**EMPTY_STATE, "query": query_spec["query"]})
+    result = _invoke_with_retry(
+        {**EMPTY_STATE, "query": query_spec["query"]}, query_spec["id"]
+    )
     latency_ms = (time.perf_counter() - t0) * 1000
     result["_latency_ms"] = latency_ms
 
@@ -338,6 +363,7 @@ if __name__ == "__main__":
 
     queries = select_queries(args.mode, args.query_ids)
     results = []
+    t_suite_start = time.perf_counter()
 
     for q in queries:
         try:
@@ -362,4 +388,6 @@ if __name__ == "__main__":
                 f"  Langfuse traces tagged: version={args.version}, "
                 f"run_id={run_id}"
             )
+        elapsed = time.perf_counter() - t_suite_start
+        print(f"  Total elapsed: {elapsed:.1f}s ({len(results)} queries)")
         get_client().flush()
