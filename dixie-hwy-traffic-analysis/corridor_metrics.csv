@@ -1,0 +1,13 @@
+metric,value
+Corridor Name,"Dixie Highway (US-25), Kenton County KY"
+Segment Length (mi),1.5
+Current Lanes,5
+Proposed Lanes,2
+Current Capacity (veh/hr),8750
+Proposed Capacity (veh/hr),4200
+BPR Travel Time - Current (min),2.308258833391384
+BPR Travel Time - Proposed (min),2.3372326575025775
+Micro Avg Delay - Current (sec),563.1136452945083
+Micro Avg Delay - Proposed (sec),1029.8375961543936
+Micro Queue Depth - Current (veh),4290.869889046007
+Micro Queue Depth - Proposed (veh),7526.4687893549435
